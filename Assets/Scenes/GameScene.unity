@@ -167,3 +167,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sceneKind: 2
+  itemDropChance: 0.5
+  paddleExpandMultiplier: 1.5
+  paddleExpandDuration: 8

@@ -23,6 +23,7 @@ public static class Milestone1SceneBuilder
     private const string PaddlePrefabPath = PrefabsFolder + "/Paddle.prefab";
     private const string BallPrefabPath = PrefabsFolder + "/Ball.prefab";
     private const string BlockPrefabPath = PrefabsFolder + "/Block.prefab";
+    private const string ItemPrefabPath = PrefabsFolder + "/Item.prefab";
 
     private const string SquareSpritePath = BackgroundsFolder + "/M1_WhiteSquare.png";
     private const string BallSpritePath = BackgroundsFolder + "/M1_Ball.png";
@@ -46,11 +47,14 @@ public static class Milestone1SceneBuilder
 
         CreatePaddlePrefab(squareSprite, bouncyMaterial);
         CreateBallPrefab(ballSprite, bouncyMaterial);
-        CreateBlockPrefab(squareSprite, bouncyMaterial);
+        CreateItemPrefab(squareSprite);
+        GameObject itemPrefabObject = AssetDatabase.LoadAssetAtPath<GameObject>(ItemPrefabPath);
+        ItemController itemPrefab = itemPrefabObject != null ? itemPrefabObject.GetComponent<ItemController>() : null;
+        CreateBlockPrefab(squareSprite, bouncyMaterial, itemPrefab);
 
         CreateTitleScene();
         CreateStageSelectScene();
-        CreateGameScene(squareSprite, backgroundSprite, bouncyMaterial);
+        CreateGameScene(squareSprite, backgroundSprite, bouncyMaterial, itemPrefab);
         UpdateBuildSettings();
 
         AssetDatabase.SaveAssets();
@@ -82,7 +86,8 @@ public static class Milestone1SceneBuilder
             GameScenePath,
             PaddlePrefabPath,
             BallPrefabPath,
-            BlockPrefabPath
+            BlockPrefabPath,
+            ItemPrefabPath
         };
 
         return requiredPaths.All(File.Exists);
@@ -288,7 +293,7 @@ public static class Milestone1SceneBuilder
         SavePrefab(ball, BallPrefabPath);
     }
 
-    private static void CreateBlockPrefab(Sprite squareSprite, PhysicsMaterial2D bouncyMaterial)
+    private static void CreateBlockPrefab(Sprite squareSprite, PhysicsMaterial2D bouncyMaterial, ItemController itemPrefab)
     {
         GameObject block = new GameObject("Block");
 
@@ -301,8 +306,38 @@ public static class Milestone1SceneBuilder
         collider.size = Vector2.one;
         collider.sharedMaterial = bouncyMaterial;
 
-        block.AddComponent<Block>();
+        Block blockController = block.AddComponent<Block>();
+        SetObjectReference(blockController, "itemPrefab", itemPrefab);
+        SetFloat(blockController, "itemDropChance", 0.5f);
         SavePrefab(block, BlockPrefabPath);
+    }
+
+    private static void CreateItemPrefab(Sprite squareSprite)
+    {
+        GameObject item = new GameObject("Item");
+        item.transform.localScale = new Vector3(0.38f, 0.38f, 1f);
+
+        SpriteRenderer renderer = item.AddComponent<SpriteRenderer>();
+        renderer.sprite = squareSprite;
+        renderer.color = new Color(0.38f, 0.95f, 0.70f, 1f);
+        renderer.sortingOrder = 15;
+
+        CircleCollider2D collider = item.AddComponent<CircleCollider2D>();
+        collider.radius = 0.5f;
+        collider.isTrigger = true;
+
+        Rigidbody2D rigidbody = item.AddComponent<Rigidbody2D>();
+        rigidbody.gravityScale = 0f;
+        rigidbody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        rigidbody.interpolation = RigidbodyInterpolation2D.Interpolate;
+        rigidbody.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        ItemController controller = item.AddComponent<ItemController>();
+        SetFloat(controller, "fallSpeed", 2.5f);
+        SetFloat(controller, "destroyY", -5.8f);
+        SetObjectReference(controller, "spriteRenderer", renderer);
+
+        SavePrefab(item, ItemPrefabPath);
     }
 
     private static void SavePrefab(GameObject prefabRoot, string path)
@@ -353,7 +388,7 @@ public static class Milestone1SceneBuilder
         EditorSceneManager.SaveScene(scene, StageSelectScenePath);
     }
 
-    private static void CreateGameScene(Sprite squareSprite, Sprite backgroundSprite, PhysicsMaterial2D bouncyMaterial)
+    private static void CreateGameScene(Sprite squareSprite, Sprite backgroundSprite, PhysicsMaterial2D bouncyMaterial, ItemController itemPrefab)
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         Camera camera = CreateMainCamera(new Color(0.04f, 0.06f, 0.08f, 1f));
@@ -373,10 +408,18 @@ public static class Milestone1SceneBuilder
         GameObject gameManagerObject = new GameObject("GameManager");
         GameManager gameManager = gameManagerObject.AddComponent<GameManager>();
 
+        GameObject itemEffectManagerObject = new GameObject("ItemEffectManager");
+        ItemEffectManager itemEffectManager = itemEffectManagerObject.AddComponent<ItemEffectManager>();
+
         GameObject paddle = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(PaddlePrefabPath)) as GameObject;
         paddle.transform.position = new Vector3(0f, -4.15f, 0f);
         PaddleController paddleController = paddle.GetComponent<PaddleController>();
         SetObjectReference(paddleController, "targetCamera", camera);
+        SetObjectReference(itemEffectManager, "paddle", paddleController);
+        SetObjectReference(itemEffectManager, "gameManager", gameManager);
+        SetFloat(itemEffectManager, "paddleExpandMultiplier", 1.5f);
+        SetFloat(itemEffectManager, "paddleExpandDuration", 8f);
+        SetInt(itemEffectManager, "lifeUpAmount", 1);
 
         GameObject ball = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BallPrefabPath)) as GameObject;
         ball.transform.position = new Vector3(0f, -3.7f, 0f);
@@ -429,6 +472,9 @@ public static class Milestone1SceneBuilder
         SetFloat(builder, "blockSize", 0.6f);
         SetFloat(builder, "spacing", 0.12f);
         SetVector2(builder, "startPosition", new Vector2(-3.24f, 3.25f));
+        SetObjectReference(builder, "itemPrefab", itemPrefab);
+        SetFloat(builder, "itemDropChance", 0.5f);
+        SetObjectReference(builder, "itemEffectManager", itemEffectManager);
 
         EditorSceneManager.SaveScene(scene, GameScenePath);
     }

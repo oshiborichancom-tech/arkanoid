@@ -62,3 +62,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   countAsTarget: 1
   gameManager: {fileID: 0}
+  itemPrefab: {fileID: 100005, guid: e50a025544c8417ea72430b0e9301caa, type: 3}
+  itemDropChance: 0.5
+  itemEffectManager: {fileID: 0}

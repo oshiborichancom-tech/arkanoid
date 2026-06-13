@@ -10,6 +10,9 @@ public class BlockGridBuilder : MonoBehaviour
     [SerializeField] private float blockSize = 0.6f;
     [SerializeField] private float spacing = 0.12f;
     [SerializeField] private Vector2 startPosition = new Vector2(-3.24f, 3.25f);
+    [SerializeField] private ItemController itemPrefab;
+    [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
+    [SerializeField] private ItemEffectManager itemEffectManager;
     [SerializeField]
     private Color[] rowColors =
     {
@@ -43,6 +46,13 @@ public class BlockGridBuilder : MonoBehaviour
             blocksParent = transform;
         }
 
+        if (itemEffectManager == null)
+        {
+            itemEffectManager = ItemEffectManager.Instance != null
+                ? ItemEffectManager.Instance
+                : FindObjectOfType<ItemEffectManager>();
+        }
+
         int createdCount = 0;
 
         for (int row = 0; row < rows; row++)
@@ -58,6 +68,7 @@ public class BlockGridBuilder : MonoBehaviour
                 block.gameObject.SetActive(true);
                 block.transform.localScale = Vector3.one * blockSize;
                 block.Initialize(gameManager);
+                block.ConfigureItemDrop(itemPrefab, itemDropChance, itemEffectManager);
 
                 SpriteRenderer renderer = block.GetComponent<SpriteRenderer>();
                 if (renderer != null && rowColors != null && rowColors.Length > 0)
@@ -95,11 +106,19 @@ public class BlockGridBuilder : MonoBehaviour
         startPosition = firstPosition;
     }
 
+    public void ConfigureItemDrops(ItemController prefab, float dropChance, ItemEffectManager effectManager)
+    {
+        itemPrefab = prefab;
+        itemDropChance = Mathf.Clamp01(dropChance);
+        itemEffectManager = effectManager;
+    }
+
     private void OnValidate()
     {
         rows = Mathf.Max(1, rows);
         columns = Mathf.Max(1, columns);
         blockSize = Mathf.Max(0.1f, blockSize);
         spacing = Mathf.Max(0f, spacing);
+        itemDropChance = Mathf.Clamp01(itemDropChance);
     }
 }

@@ -13,6 +13,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     }
 
     [SerializeField] private SceneKind sceneKind = SceneKind.Title;
+    [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
+    [SerializeField] private float paddleExpandMultiplier = 1.5f;
+    [SerializeField] private float paddleExpandDuration = 8f;
 
     private static Sprite squareSprite;
     private static Sprite ballSprite;
@@ -32,9 +35,16 @@ public class Milestone1SceneBootstrap : MonoBehaviour
                 BuildStageSelectScene();
                 break;
             case SceneKind.Game:
-                BuildGameScene();
+                BuildGameScene(itemDropChance, paddleExpandMultiplier, paddleExpandDuration);
                 break;
         }
+    }
+
+    private void OnValidate()
+    {
+        itemDropChance = Mathf.Clamp01(itemDropChance);
+        paddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier);
+        paddleExpandDuration = Mathf.Max(0f, paddleExpandDuration);
     }
 
     private static void EnsureSharedAssets()
@@ -162,7 +172,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         backButton.onClick.AddListener(loader.LoadTitle);
     }
 
-    private static void BuildGameScene()
+    private static void BuildGameScene(float itemDropChance, float paddleExpandMultiplier, float paddleExpandDuration)
     {
         Physics2D.gravity = Vector2.zero;
         Camera camera = CreateCamera(new Color(0.04f, 0.06f, 0.08f, 1f));
@@ -178,7 +188,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         CreateWall("TopWall", new Vector2(0f, 5.1f), new Vector2(18.2f, 0.3f), bouncyMaterial);
 
         GameManager gameManager = new GameObject("GameManager").AddComponent<GameManager>();
+        ItemEffectManager itemEffectManager = new GameObject("ItemEffectManager").AddComponent<ItemEffectManager>();
         GameObject paddle = CreatePaddle(camera, bouncyMaterial);
+        PaddleController paddleController = paddle.GetComponent<PaddleController>();
+        itemEffectManager.Configure(paddleController, gameManager, paddleExpandMultiplier, paddleExpandDuration);
         GameObject ball = CreateBall(paddle.transform, gameManager, bouncyMaterial);
 
         Canvas canvas = CreateCanvas();
@@ -207,7 +220,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         uiManager.Configure(livesText, stageNameText, clearText, gameOverText);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, "Stage 1", 3);
 
-        CreateBlockGrid(gameManager, bouncyMaterial);
+        CreateBlockGrid(gameManager, bouncyMaterial, itemEffectManager, itemDropChance);
     }
 
     private static Camera CreateCamera(Color backgroundColor)
@@ -301,9 +314,16 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return ball;
     }
 
-    private static void CreateBlockGrid(GameManager gameManager, PhysicsMaterial2D material)
+    private static void CreateBlockGrid(
+        GameManager gameManager,
+        PhysicsMaterial2D material,
+        ItemEffectManager itemEffectManager,
+        float itemDropChance)
     {
+        float safeDropChance = Mathf.Clamp01(itemDropChance);
         GameObject runtimePrefabs = new GameObject("RuntimePrefabs");
+        ItemController itemPrefab = CreateItemPrefab(runtimePrefabs.transform);
+
         GameObject blockPrefab = new GameObject("BlockPrefab");
         blockPrefab.transform.SetParent(runtimePrefabs.transform);
         blockPrefab.SetActive(false);
@@ -318,10 +338,37 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         collider.sharedMaterial = material;
 
         Block block = blockPrefab.AddComponent<Block>();
+        block.ConfigureItemDrop(itemPrefab, safeDropChance, itemEffectManager);
         GameObject blocksParent = new GameObject("Blocks");
 
         BlockGridBuilder builder = new GameObject("BlockGridBuilder").AddComponent<BlockGridBuilder>();
         builder.Configure(block, gameManager, blocksParent.transform, 5, 10, 0.6f, 0.12f, new Vector2(-3.24f, 3.25f));
+        builder.ConfigureItemDrops(itemPrefab, safeDropChance, itemEffectManager);
+    }
+
+    private static ItemController CreateItemPrefab(Transform parent)
+    {
+        GameObject itemPrefab = new GameObject("ItemPrefab");
+        itemPrefab.transform.SetParent(parent);
+        itemPrefab.transform.localScale = new Vector3(0.38f, 0.38f, 1f);
+        itemPrefab.SetActive(false);
+
+        SpriteRenderer renderer = itemPrefab.AddComponent<SpriteRenderer>();
+        renderer.sprite = squareSprite;
+        renderer.color = new Color(0.38f, 0.95f, 0.70f, 1f);
+        renderer.sortingOrder = 15;
+
+        CircleCollider2D collider = itemPrefab.AddComponent<CircleCollider2D>();
+        collider.radius = 0.5f;
+        collider.isTrigger = true;
+
+        Rigidbody2D rigidbody = itemPrefab.AddComponent<Rigidbody2D>();
+        rigidbody.gravityScale = 0f;
+        rigidbody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        rigidbody.interpolation = RigidbodyInterpolation2D.Interpolate;
+        rigidbody.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        return itemPrefab.AddComponent<ItemController>();
     }
 
     private static Canvas CreateCanvas()

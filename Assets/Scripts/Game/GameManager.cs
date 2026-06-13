@@ -154,6 +154,35 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void AddLife(int amount)
+    {
+        if (amount <= 0)
+        {
+            Debug.LogWarning($"AddLife ignored because amount must be positive. Amount: {amount}");
+            return;
+        }
+
+        if (CurrentState != GameState.Playing)
+        {
+            Debug.Log($"Life up ignored while game state is {CurrentState}.");
+            return;
+        }
+
+        lives += amount;
+
+        if (uiManager == null && autoFindReferences)
+        {
+            FindMissingReferences();
+        }
+
+        if (uiManager != null)
+        {
+            uiManager.SetLives(lives);
+        }
+
+        Debug.Log($"Life up applied. Lives: {lives}");
+    }
+
     public void RestartScene()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
