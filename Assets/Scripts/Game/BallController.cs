@@ -16,9 +16,13 @@ public class BallController : MonoBehaviour
     private bool waitingForLaunch = true;
     private bool lostReported;
 
+    public float MoveSpeed => moveSpeed;
+    public bool IsWaitingForLaunch => waitingForLaunch;
+    public bool IsLost => lostReported;
+
     private void Awake()
     {
-        ballRigidbody = GetComponent<Rigidbody2D>();
+        CacheRigidbody();
         ballRigidbody.gravityScale = 0f;
         ballRigidbody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         ballRigidbody.constraints = RigidbodyConstraints2D.FreezeRotation;
@@ -27,7 +31,11 @@ public class BallController : MonoBehaviour
     private void Start()
     {
         FindMissingReferences();
-        ResetToPaddle();
+
+        if (waitingForLaunch)
+        {
+            ResetToPaddle();
+        }
     }
 
     private void Update()
@@ -51,7 +59,7 @@ public class BallController : MonoBehaviour
 
             if (gameManager != null)
             {
-                gameManager.NotifyBallLost();
+                gameManager.NotifyBallLost(this);
             }
         }
     }
@@ -88,6 +96,9 @@ public class BallController : MonoBehaviour
 
     public void ResetToPaddle()
     {
+        gameObject.SetActive(true);
+        CacheRigidbody();
+
         waitingForLaunch = true;
         lostReported = false;
         ballRigidbody.simulated = true;
@@ -98,16 +109,41 @@ public class BallController : MonoBehaviour
 
     public void StopBall()
     {
+        CacheRigidbody();
+
         waitingForLaunch = false;
         lostReported = true;
         ballRigidbody.velocity = Vector2.zero;
         ballRigidbody.angularVelocity = 0f;
     }
 
+    public void DeactivateAfterLoss()
+    {
+        StopBall();
+        ballRigidbody.simulated = false;
+        gameObject.SetActive(false);
+    }
+
     public void Configure(Transform paddleTransform, GameManager manager)
     {
         paddle = paddleTransform;
         gameManager = manager;
+    }
+
+    public void LaunchFrom(Vector2 position, Vector2 direction, float speed)
+    {
+        gameObject.SetActive(true);
+        CacheRigidbody();
+
+        transform.position = position;
+        waitingForLaunch = false;
+        lostReported = false;
+        ballRigidbody.simulated = true;
+        ballRigidbody.angularVelocity = 0f;
+
+        Vector2 launchDirection = direction.sqrMagnitude <= 0.0001f ? Vector2.up : direction.normalized;
+        moveSpeed = Mathf.Max(0.1f, speed);
+        ballRigidbody.velocity = launchDirection * moveSpeed;
     }
 
     private void Launch()
@@ -120,7 +156,7 @@ public class BallController : MonoBehaviour
 
         if (gameManager != null)
         {
-            gameManager.NotifyBallLaunched();
+            gameManager.NotifyBallLaunched(this);
         }
     }
 
@@ -181,6 +217,14 @@ public class BallController : MonoBehaviour
             {
                 paddle = paddleController.transform;
             }
+        }
+    }
+
+    private void CacheRigidbody()
+    {
+        if (ballRigidbody == null || ballRigidbody.gameObject != gameObject)
+        {
+            ballRigidbody = GetComponent<Rigidbody2D>();
         }
     }
 }

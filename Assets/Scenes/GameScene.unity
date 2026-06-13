@@ -170,3 +170,6 @@ MonoBehaviour:
   itemDropChance: 0.5
   paddleExpandMultiplier: 1.5
   paddleExpandDuration: 8
+  addBallsCount: 2
+  addBallLaunchAngle: 25
+  addBallSpeed: 7

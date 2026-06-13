@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -16,11 +17,17 @@ public class GameManager : MonoBehaviour
     [SerializeField] private int initialLives = 3;
     [SerializeField] private string stageName = "Stage 1";
     [SerializeField] private BallController ball;
+    [SerializeField] private BallController ballPrefab;
+    [SerializeField] private Transform paddle;
+    [SerializeField] private Transform ballsParent;
+    [SerializeField] private float extraBallLaunchAngle = 25f;
+    [SerializeField] private float extraBallSpeed = 7f;
     [SerializeField] private UIManager uiManager;
     [SerializeField] private bool autoFindReferences = true;
 
     private int lives;
     private int remainingBlocks;
+    private readonly List<BallController> activeBalls = new List<BallController>();
 
     public GameState CurrentState { get; private set; }
     public bool CanLaunchBall => CurrentState == GameState.ReadyToLaunch;
@@ -84,6 +91,20 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.ReadyToLaunch;
     }
 
+    public void ConfigureBallSpawning(
+        BallController prefab,
+        Transform paddleTransform,
+        Transform parent,
+        float launchAngle,
+        float launchSpeed)
+    {
+        ballPrefab = prefab != null ? prefab : ball;
+        paddle = paddleTransform;
+        ballsParent = parent;
+        extraBallLaunchAngle = Mathf.Max(0f, launchAngle);
+        extraBallSpeed = Mathf.Max(0.1f, launchSpeed);
+    }
+
     public void RegisterBlocks(int blockCount)
     {
         int safeCount = Mathf.Max(0, blockCount);
@@ -93,11 +114,17 @@ public class GameManager : MonoBehaviour
 
     public void NotifyBallLaunched()
     {
+        NotifyBallLaunched(ball);
+    }
+
+    public void NotifyBallLaunched(BallController launchedBall)
+    {
         if (!CanLaunchBall)
         {
             return;
         }
 
+        RegisterActiveBall(launchedBall != null ? launchedBall : ball);
         CurrentState = GameState.Playing;
 
         if (uiManager != null)
@@ -123,11 +150,95 @@ public class GameManager : MonoBehaviour
 
     public void NotifyBallLost()
     {
+        NotifyBallLost(ball);
+    }
+
+    public void NotifyBallLost(BallController lostBall)
+    {
         if (CurrentState == GameState.Clear || CurrentState == GameState.GameOver)
         {
             return;
         }
 
+        CleanActiveBalls();
+
+        if (lostBall != null)
+        {
+            activeBalls.Remove(lostBall);
+        }
+
+        bool hasOtherBalls = activeBalls.Count > 0;
+
+        if (lostBall != null && lostBall != ball)
+        {
+            Destroy(lostBall.gameObject);
+        }
+        else if (lostBall == ball && hasOtherBalls)
+        {
+            lostBall.DeactivateAfterLoss();
+        }
+
+        if (hasOtherBalls)
+        {
+            return;
+        }
+
+        HandleAllBallsLost();
+    }
+
+    public void AddExtraBalls(int count)
+    {
+        if (count <= 0)
+        {
+            Debug.LogWarning($"AddExtraBalls ignored because count must be positive. Count: {count}");
+            return;
+        }
+
+        if (CurrentState != GameState.Playing)
+        {
+            Debug.Log($"AddBalls ignored while game state is {CurrentState}.");
+            return;
+        }
+
+        FindMissingReferences();
+
+        BallController template = ballPrefab != null ? ballPrefab : ball;
+        if (template == null)
+        {
+            Debug.LogWarning("Ball prefab not found. AddBalls could not be applied.");
+            return;
+        }
+
+        Vector2 spawnPosition = GetExtraBallSpawnPosition();
+        int addedCount = 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            BallController extraBall = Instantiate(template, spawnPosition, Quaternion.identity, ballsParent);
+            if (extraBall == null)
+            {
+                continue;
+            }
+
+            extraBall.gameObject.name = $"ExtraBall_{i + 1}";
+            extraBall.gameObject.SetActive(true);
+            extraBall.Configure(paddle, this);
+            extraBall.LaunchFrom(spawnPosition, GetExtraBallDirection(i, count), extraBallSpeed);
+            RegisterActiveBall(extraBall);
+            addedCount++;
+        }
+
+        if (addedCount <= 0)
+        {
+            Debug.LogWarning("AddBalls could not create any extra balls.");
+            return;
+        }
+
+        Debug.Log($"AddBalls effect applied. Added: {addedCount}");
+    }
+
+    private void HandleAllBallsLost()
+    {
         lives = Mathf.Max(0, lives - 1);
 
         if (uiManager != null)
@@ -150,6 +261,7 @@ public class GameManager : MonoBehaviour
 
         if (ball != null)
         {
+            activeBalls.Clear();
             ball.ResetToPaddle();
         }
     }
@@ -198,10 +310,7 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.Clear;
         Debug.Log("Stage clear.");
 
-        if (ball != null)
-        {
-            ball.StopBall();
-        }
+        StopAllBalls();
 
         if (uiManager != null)
         {
@@ -214,10 +323,7 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.GameOver;
         Debug.Log("Game over.");
 
-        if (ball != null)
-        {
-            ball.StopBall();
-        }
+        StopAllBalls();
 
         if (uiManager != null)
         {
@@ -232,9 +338,133 @@ public class GameManager : MonoBehaviour
             ball = FindObjectOfType<BallController>();
         }
 
+        if (ballPrefab == null)
+        {
+            ballPrefab = ball;
+        }
+
+        if (paddle == null)
+        {
+            PaddleController paddleController = FindObjectOfType<PaddleController>();
+            if (paddleController != null)
+            {
+                paddle = paddleController.transform;
+            }
+        }
+
         if (uiManager == null)
         {
             uiManager = FindObjectOfType<UIManager>();
         }
+    }
+
+    private void RegisterActiveBall(BallController activeBall)
+    {
+        if (activeBall == null)
+        {
+            return;
+        }
+
+        CleanActiveBalls();
+
+        if (!activeBalls.Contains(activeBall))
+        {
+            activeBalls.Add(activeBall);
+        }
+    }
+
+    private void CleanActiveBalls()
+    {
+        activeBalls.RemoveAll(activeBall => activeBall == null);
+    }
+
+    private Vector2 GetExtraBallSpawnPosition()
+    {
+        BallController sourceBall = GetExtraBallSource();
+        if (sourceBall != null)
+        {
+            return sourceBall.transform.position;
+        }
+
+        if (paddle != null)
+        {
+            return (Vector2)paddle.position + new Vector2(0f, 0.45f);
+        }
+
+        if (ball != null)
+        {
+            return ball.transform.position;
+        }
+
+        return Vector2.zero;
+    }
+
+    private BallController GetExtraBallSource()
+    {
+        CleanActiveBalls();
+
+        for (int i = 0; i < activeBalls.Count; i++)
+        {
+            BallController activeBall = activeBalls[i];
+            if (activeBall != null && activeBall.gameObject.activeInHierarchy && !activeBall.IsLost)
+            {
+                return activeBall;
+            }
+        }
+
+        if (ball != null && ball.gameObject.activeInHierarchy)
+        {
+            return ball;
+        }
+
+        return null;
+    }
+
+    private Vector2 GetExtraBallDirection(int index, int count)
+    {
+        if (count <= 1)
+        {
+            return Vector2.up;
+        }
+
+        int pairIndex = index / 2;
+        float side = index % 2 == 0 ? -1f : 1f;
+        float angle = extraBallLaunchAngle * (pairIndex + 1) * side;
+        return Quaternion.Euler(0f, 0f, angle) * Vector2.up;
+    }
+
+    private void StopAllBalls()
+    {
+        CleanActiveBalls();
+
+        for (int i = activeBalls.Count - 1; i >= 0; i--)
+        {
+            BallController activeBall = activeBalls[i];
+            if (activeBall == null)
+            {
+                continue;
+            }
+
+            if (activeBall == ball)
+            {
+                activeBall.StopBall();
+                continue;
+            }
+
+            Destroy(activeBall.gameObject);
+        }
+
+        activeBalls.Clear();
+
+        if (ball != null)
+        {
+            ball.StopBall();
+        }
+    }
+
+    private void OnValidate()
+    {
+        extraBallLaunchAngle = Mathf.Max(0f, extraBallLaunchAngle);
+        extraBallSpeed = Mathf.Max(0.1f, extraBallSpeed);
     }
 }

@@ -420,8 +420,11 @@ public static class Milestone1SceneBuilder
         SetFloat(itemEffectManager, "paddleExpandMultiplier", 1.5f);
         SetFloat(itemEffectManager, "paddleExpandDuration", 8f);
         SetInt(itemEffectManager, "lifeUpAmount", 1);
+        SetInt(itemEffectManager, "addBallsCount", 2);
 
+        GameObject ballsParent = new GameObject("Balls");
         GameObject ball = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BallPrefabPath)) as GameObject;
+        ball.transform.SetParent(ballsParent.transform);
         ball.transform.position = new Vector3(0f, -3.7f, 0f);
         BallController ballController = ball.GetComponent<BallController>();
         SetObjectReference(ballController, "paddle", paddle.transform);
@@ -458,6 +461,11 @@ public static class Milestone1SceneBuilder
         SetInt(gameManager, "initialLives", 3);
         SetString(gameManager, "stageName", "Stage 1");
         SetObjectReference(gameManager, "ball", ballController);
+        SetObjectReference(gameManager, "ballPrefab", AssetDatabase.LoadAssetAtPath<GameObject>(BallPrefabPath).GetComponent<BallController>());
+        SetObjectReference(gameManager, "paddle", paddle.transform);
+        SetObjectReference(gameManager, "ballsParent", ballsParent.transform);
+        SetFloat(gameManager, "extraBallLaunchAngle", 25f);
+        SetFloat(gameManager, "extraBallSpeed", 7f);
         SetObjectReference(gameManager, "uiManager", uiManager);
 
         GameObject blocksParent = new GameObject("Blocks");

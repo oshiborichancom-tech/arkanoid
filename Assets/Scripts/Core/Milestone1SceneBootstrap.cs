@@ -16,6 +16,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
     [SerializeField] private float paddleExpandMultiplier = 1.5f;
     [SerializeField] private float paddleExpandDuration = 8f;
+    [SerializeField] private int addBallsCount = 2;
+    [SerializeField] private float addBallLaunchAngle = 25f;
+    [SerializeField] private float addBallSpeed = 7f;
 
     private static Sprite squareSprite;
     private static Sprite ballSprite;
@@ -35,7 +38,13 @@ public class Milestone1SceneBootstrap : MonoBehaviour
                 BuildStageSelectScene();
                 break;
             case SceneKind.Game:
-                BuildGameScene(itemDropChance, paddleExpandMultiplier, paddleExpandDuration);
+                BuildGameScene(
+                    itemDropChance,
+                    paddleExpandMultiplier,
+                    paddleExpandDuration,
+                    addBallsCount,
+                    addBallLaunchAngle,
+                    addBallSpeed);
                 break;
         }
     }
@@ -45,6 +54,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         itemDropChance = Mathf.Clamp01(itemDropChance);
         paddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier);
         paddleExpandDuration = Mathf.Max(0f, paddleExpandDuration);
+        addBallsCount = Mathf.Max(1, addBallsCount);
+        addBallLaunchAngle = Mathf.Max(0f, addBallLaunchAngle);
+        addBallSpeed = Mathf.Max(0.1f, addBallSpeed);
     }
 
     private static void EnsureSharedAssets()
@@ -172,7 +184,13 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         backButton.onClick.AddListener(loader.LoadTitle);
     }
 
-    private static void BuildGameScene(float itemDropChance, float paddleExpandMultiplier, float paddleExpandDuration)
+    private static void BuildGameScene(
+        float itemDropChance,
+        float paddleExpandMultiplier,
+        float paddleExpandDuration,
+        int addBallsCount,
+        float addBallLaunchAngle,
+        float addBallSpeed)
     {
         Physics2D.gravity = Vector2.zero;
         Camera camera = CreateCamera(new Color(0.04f, 0.06f, 0.08f, 1f));
@@ -191,8 +209,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         ItemEffectManager itemEffectManager = new GameObject("ItemEffectManager").AddComponent<ItemEffectManager>();
         GameObject paddle = CreatePaddle(camera, bouncyMaterial);
         PaddleController paddleController = paddle.GetComponent<PaddleController>();
-        itemEffectManager.Configure(paddleController, gameManager, paddleExpandMultiplier, paddleExpandDuration);
+        itemEffectManager.Configure(paddleController, gameManager, paddleExpandMultiplier, paddleExpandDuration, addBallsCount);
+        GameObject ballsParent = new GameObject("Balls");
         GameObject ball = CreateBall(paddle.transform, gameManager, bouncyMaterial);
+        ball.transform.SetParent(ballsParent.transform);
 
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
@@ -219,6 +239,12 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
         uiManager.Configure(livesText, stageNameText, clearText, gameOverText);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, "Stage 1", 3);
+        gameManager.ConfigureBallSpawning(
+            ball.GetComponent<BallController>(),
+            paddle.transform,
+            ballsParent.transform,
+            addBallLaunchAngle,
+            addBallSpeed);
 
         CreateBlockGrid(gameManager, bouncyMaterial, itemEffectManager, itemDropChance);
     }

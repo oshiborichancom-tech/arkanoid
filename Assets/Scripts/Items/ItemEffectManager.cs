@@ -9,6 +9,7 @@ public class ItemEffectManager : MonoBehaviour
     [SerializeField] private float paddleExpandMultiplier = 1.5f;
     [SerializeField] private float paddleExpandDuration = 8f;
     [SerializeField] private int lifeUpAmount = 1;
+    [SerializeField] private int addBallsCount = 2;
 
     private void Awake()
     {
@@ -50,13 +51,19 @@ public class ItemEffectManager : MonoBehaviour
         return new GameObject("ItemEffectManager").AddComponent<ItemEffectManager>();
     }
 
-    public void Configure(PaddleController paddleController, GameManager manager, float expandMultiplier, float expandDuration)
+    public void Configure(
+        PaddleController paddleController,
+        GameManager manager,
+        float expandMultiplier,
+        float expandDuration,
+        int extraBallCount)
     {
         paddle = paddleController;
         gameManager = manager;
         paddleExpandMultiplier = Mathf.Max(1f, expandMultiplier);
         paddleExpandDuration = Mathf.Max(0f, expandDuration);
         lifeUpAmount = Mathf.Max(1, lifeUpAmount);
+        addBallsCount = Mathf.Max(1, extraBallCount);
     }
 
     public void ApplyItemEffect(ItemType itemType)
@@ -72,6 +79,7 @@ public class ItemEffectManager : MonoBehaviour
                 ApplyLifeUp();
                 break;
             case ItemType.AddBalls:
+                ApplyAddBalls();
                 break;
             default:
                 Debug.LogWarning($"Unknown item type: {itemType}");
@@ -106,6 +114,20 @@ public class ItemEffectManager : MonoBehaviour
         gameManager.AddLife(lifeUpAmount);
     }
 
+    private void ApplyAddBalls()
+    {
+        FindMissingReferences();
+
+        if (gameManager == null)
+        {
+            Debug.LogWarning("GameManager not found. AddBalls could not be applied.");
+            return;
+        }
+
+        Debug.Log("AddBalls effect requested.");
+        gameManager.AddExtraBalls(addBallsCount);
+    }
+
     private void FindMissingReferences()
     {
         if (paddle == null)
@@ -124,5 +146,6 @@ public class ItemEffectManager : MonoBehaviour
         paddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier);
         paddleExpandDuration = Mathf.Max(0f, paddleExpandDuration);
         lifeUpAmount = Mathf.Max(1, lifeUpAmount);
+        addBallsCount = Mathf.Max(1, addBallsCount);
     }
 }
