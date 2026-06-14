@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -26,6 +27,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
     [SerializeField] private SceneKind sceneKind = SceneKind.Title;
     [SerializeField] private StageData stageData;
+    [SerializeField] private StageDatabase stageDatabase;
     [SerializeField] private string stageName = DefaultStageName;
     [SerializeField] private Sprite fallbackBackgroundSprite;
     [SerializeField] private int blockRows = DefaultBlockRows;
@@ -50,6 +52,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
     private struct StageRuntimeSettings
     {
+        public int StageId;
         public string StageName;
         public Sprite BackgroundSprite;
         public int BlockRows;
@@ -112,6 +115,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     {
         StageRuntimeSettings settings = new StageRuntimeSettings
         {
+            StageId = 1,
             StageName = string.IsNullOrWhiteSpace(stageName) ? DefaultStageName : stageName,
             BackgroundSprite = fallbackBackgroundSprite,
             BlockRows = blockRows > 0 ? blockRows : DefaultBlockRows,
@@ -130,27 +134,34 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             AddBallSpeed = addBallSpeed > 0f ? addBallSpeed : DefaultAddBallSpeed
         };
 
-        if (stageData == null)
+        StageData effectiveStageData = StageSelectionContext.SelectedStageData != null
+            ? StageSelectionContext.SelectedStageData
+            : stageData;
+
+        if (effectiveStageData == null)
         {
             return settings;
         }
 
-        settings.StageName = stageData.StageName;
-        settings.BackgroundSprite = stageData.BackgroundSprite != null ? stageData.BackgroundSprite : settings.BackgroundSprite;
-        settings.BlockRows = stageData.BlockRows;
-        settings.BlockColumns = stageData.BlockColumns;
-        settings.BlockSize = stageData.BlockSize;
-        settings.BlockSpacing = stageData.BlockSpacing;
-        settings.BlockStartPosition = stageData.BlockStartPosition;
-        settings.BallSpeed = stageData.BallSpeed;
-        settings.PaddleSpeed = stageData.PaddleSpeed;
-        settings.InitialLives = stageData.InitialLives;
-        settings.ItemDropChance = stageData.ItemDropChance;
-        settings.PaddleExpandMultiplier = stageData.PaddleExpandMultiplier;
-        settings.PaddleExpandDuration = stageData.PaddleExpandDuration;
-        settings.AddBallsCount = stageData.AddBallsCount;
-        settings.AddBallLaunchAngle = stageData.AddBallLaunchAngle;
-        settings.AddBallSpeed = stageData.AddBallSpeed;
+        Debug.Log($"GameScene using stage data: {effectiveStageData.StageName}");
+
+        settings.StageId = effectiveStageData.StageId;
+        settings.StageName = effectiveStageData.StageName;
+        settings.BackgroundSprite = effectiveStageData.BackgroundSprite != null ? effectiveStageData.BackgroundSprite : settings.BackgroundSprite;
+        settings.BlockRows = effectiveStageData.BlockRows;
+        settings.BlockColumns = effectiveStageData.BlockColumns;
+        settings.BlockSize = effectiveStageData.BlockSize;
+        settings.BlockSpacing = effectiveStageData.BlockSpacing;
+        settings.BlockStartPosition = effectiveStageData.BlockStartPosition;
+        settings.BallSpeed = effectiveStageData.BallSpeed;
+        settings.PaddleSpeed = effectiveStageData.PaddleSpeed;
+        settings.InitialLives = effectiveStageData.InitialLives;
+        settings.ItemDropChance = effectiveStageData.ItemDropChance;
+        settings.PaddleExpandMultiplier = effectiveStageData.PaddleExpandMultiplier;
+        settings.PaddleExpandDuration = effectiveStageData.PaddleExpandDuration;
+        settings.AddBallsCount = effectiveStageData.AddBallsCount;
+        settings.AddBallLaunchAngle = effectiveStageData.AddBallLaunchAngle;
+        settings.AddBallSpeed = effectiveStageData.AddBallSpeed;
 
         return settings;
     }
@@ -261,7 +272,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         startButton.onClick.AddListener(loader.LoadStageSelect);
     }
 
-    private static void BuildStageSelectScene()
+    private void BuildStageSelectScene()
     {
         CreateCamera(new Color(0.05f, 0.09f, 0.15f, 1f));
         SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
@@ -271,13 +282,88 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         CreateText(canvas.transform, "StageSelectTitle", "Stage Select", 64, Color.white,
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(760f, 100f));
 
-        Button stageButton = CreateButton(canvas.transform, "Stage1Button", "Stage 1",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(360f, 84f));
-        stageButton.onClick.AddListener(loader.LoadGame);
+        int buttonCount = CreateStageButtonsFromDatabase(canvas.transform);
+        float backButtonY = buttonCount > 0 ? 70f - buttonCount * 95f - 15f : -85f;
 
         Button backButton = CreateButton(canvas.transform, "BackButton", "Back",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -85f), new Vector2(260f, 72f));
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, backButtonY), new Vector2(260f, 72f));
         backButton.onClick.AddListener(loader.LoadTitle);
+    }
+
+    private int CreateStageButtonsFromDatabase(Transform parent)
+    {
+        if (stageDatabase == null)
+        {
+            Debug.LogWarning("StageSelectScene needs a StageDatabase.");
+            return 0;
+        }
+
+        IReadOnlyList<StageData> stages = stageDatabase.Stages;
+        if (stages == null || stages.Count <= 0)
+        {
+            Debug.LogWarning("StageDatabase has no stages.");
+            return 0;
+        }
+
+        int buttonCount = 0;
+        for (int i = 0; i < stages.Count; i++)
+        {
+            StageData currentStageData = stages[i];
+            if (currentStageData == null)
+            {
+                Debug.LogWarning($"StageDatabase contains a null StageData at index {i}. It will be skipped.");
+                continue;
+            }
+
+            bool isUnlocked = StageUnlockManager.IsStageUnlocked(currentStageData.StageId);
+            Debug.Log($"Stage {currentStageData.StageId} unlocked: {isUnlocked}");
+
+            CreateStageSelectButton(
+                parent,
+                $"StageButton_{i + 1}",
+                GetStageSelectLabel(currentStageData, isUnlocked),
+                currentStageData,
+                isUnlocked,
+                new Vector2(0f, 70f - buttonCount * 95f));
+            buttonCount++;
+        }
+
+        if (buttonCount <= 0)
+        {
+            Debug.LogWarning("StageDatabase has no valid StageData entries.");
+            return 0;
+        }
+
+        Debug.Log($"StageSelect loaded stages: {buttonCount}");
+        return buttonCount;
+    }
+
+    private static string GetStageSelectLabel(StageData stageData, bool isUnlocked)
+    {
+        if (stageData == null)
+        {
+            return "Stage";
+        }
+
+        return isUnlocked ? stageData.StageName : $"{stageData.StageName} (Locked)";
+    }
+
+    private static void CreateStageSelectButton(
+        Transform parent,
+        string name,
+        string label,
+        StageData data,
+        bool isUnlocked,
+        Vector2 anchoredPosition)
+    {
+        Button stageButton = CreateButton(parent, name, label,
+            new Vector2(0.5f, 0.5f),
+            new Vector2(0.5f, 0.5f),
+            anchoredPosition,
+            new Vector2(360f, 84f));
+        StageSelectButton stageSelectButton = stageButton.gameObject.AddComponent<StageSelectButton>();
+        stageSelectButton.Configure(data, isUnlocked);
+        stageButton.onClick.AddListener(stageSelectButton.SelectStageAndLoadGame);
     }
 
     private static void BuildGameScene(StageRuntimeSettings settings)
@@ -333,7 +419,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
         uiManager.Configure(livesText, stageNameText, clearText, gameOverText);
-        gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives);
+        gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId);
         gameManager.ConfigureBallSpawning(
             ball.GetComponent<BallController>(),
             paddle.transform,

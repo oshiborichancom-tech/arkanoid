@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
@@ -20,6 +21,9 @@ public static class Milestone1SceneBuilder
     private const string StageSelectScenePath = ScenesFolder + "/StageSelectScene.unity";
     private const string GameScenePath = ScenesFolder + "/GameScene.unity";
     private const string Stage1DataPath = StagesFolder + "/Stage1.asset";
+    private const string Stage2DataPath = StagesFolder + "/Stage2.asset";
+    private const string Stage3DataPath = StagesFolder + "/Stage3.asset";
+    private const string StageDatabasePath = StagesFolder + "/StageDatabase.asset";
 
     private const string PaddlePrefabPath = PrefabsFolder + "/Paddle.prefab";
     private const string BallPrefabPath = PrefabsFolder + "/Ball.prefab";
@@ -46,6 +50,9 @@ public static class Milestone1SceneBuilder
         Sprite backgroundSprite = CreateBackgroundSprite(BackgroundSpritePath);
         PhysicsMaterial2D bouncyMaterial = CreateBouncyMaterial();
         StageData stage1Data = EnsureStage1Data(backgroundSprite);
+        StageData stage2Data = EnsureStage2Data();
+        StageData stage3Data = EnsureStage3Data();
+        StageDatabase stageDatabase = EnsureStageDatabase(stage1Data, stage2Data, stage3Data);
 
         CreatePaddlePrefab(squareSprite, bouncyMaterial);
         CreateBallPrefab(ballSprite, bouncyMaterial);
@@ -55,13 +62,19 @@ public static class Milestone1SceneBuilder
         CreateBlockPrefab(squareSprite, bouncyMaterial, itemPrefab);
 
         CreateTitleScene();
-        CreateStageSelectScene();
+        CreateStageSelectScene(stage1Data, stageDatabase);
         CreateGameScene(stage1Data);
         UpdateBuildSettings();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("Arkanoid Milestone 1 scenes, prefabs, stage data, and build settings were generated.");
+    }
+
+    [MenuItem("Tools/Arkanoid/Reset Stage Progress")]
+    public static void ResetStageProgress()
+    {
+        StageUnlockManager.ResetProgress();
     }
 
     private static void BuildIfMissing()
@@ -87,6 +100,9 @@ public static class Milestone1SceneBuilder
             StageSelectScenePath,
             GameScenePath,
             Stage1DataPath,
+            Stage2DataPath,
+            Stage3DataPath,
+            StageDatabasePath,
             PaddlePrefabPath,
             BallPrefabPath,
             BlockPrefabPath,
@@ -298,6 +314,133 @@ public static class Milestone1SceneBuilder
         EditorUtility.SetDirty(stageData);
     }
 
+    private static StageData EnsureStage2Data()
+    {
+        StageData stageData = AssetDatabase.LoadAssetAtPath<StageData>(Stage2DataPath);
+        if (stageData != null)
+        {
+            return stageData;
+        }
+
+        stageData = ScriptableObject.CreateInstance<StageData>();
+        stageData.name = "Stage2";
+        AssetDatabase.CreateAsset(stageData, Stage2DataPath);
+
+        SetInt(stageData, "stageId", 2);
+        SetString(stageData, "stageName", "Stage 2");
+        SetInt(stageData, "blockRows", 6);
+        SetInt(stageData, "blockColumns", 8);
+        SetFloat(stageData, "blockSize", 0.6f);
+        SetFloat(stageData, "blockSpacing", 0.12f);
+        SetVector2(stageData, "blockStartPosition", new Vector2(-2.52f, 3.25f));
+        SetFloat(stageData, "ballSpeed", 7.5f);
+        SetFloat(stageData, "paddleSpeed", 9f);
+        SetInt(stageData, "initialLives", 3);
+        SetFloat(stageData, "itemDropChance", 0.4f);
+        SetFloat(stageData, "paddleExpandMultiplier", 1.5f);
+        SetFloat(stageData, "paddleExpandDuration", 8f);
+        SetInt(stageData, "addBallsCount", 2);
+        SetFloat(stageData, "addBallLaunchAngle", 25f);
+        SetFloat(stageData, "addBallSpeed", 7.5f);
+
+        EditorUtility.SetDirty(stageData);
+        return stageData;
+    }
+
+    private static StageData EnsureStage3Data()
+    {
+        StageData stageData = AssetDatabase.LoadAssetAtPath<StageData>(Stage3DataPath);
+        if (stageData != null)
+        {
+            return stageData;
+        }
+
+        stageData = ScriptableObject.CreateInstance<StageData>();
+        stageData.name = "Stage3";
+        AssetDatabase.CreateAsset(stageData, Stage3DataPath);
+
+        SetInt(stageData, "stageId", 3);
+        SetString(stageData, "stageName", "Stage 3");
+        SetInt(stageData, "blockRows", 7);
+        SetInt(stageData, "blockColumns", 9);
+        SetFloat(stageData, "blockSize", 0.6f);
+        SetFloat(stageData, "blockSpacing", 0.12f);
+        SetVector2(stageData, "blockStartPosition", new Vector2(-2.88f, 3.25f));
+        SetFloat(stageData, "ballSpeed", 8f);
+        SetFloat(stageData, "paddleSpeed", 9f);
+        SetInt(stageData, "initialLives", 3);
+        SetFloat(stageData, "itemDropChance", 0.35f);
+        SetFloat(stageData, "paddleExpandMultiplier", 1.5f);
+        SetFloat(stageData, "paddleExpandDuration", 8f);
+        SetInt(stageData, "addBallsCount", 2);
+        SetFloat(stageData, "addBallLaunchAngle", 25f);
+        SetFloat(stageData, "addBallSpeed", 8f);
+
+        EditorUtility.SetDirty(stageData);
+        return stageData;
+    }
+
+    private static StageDatabase EnsureStageDatabase(params StageData[] requiredStages)
+    {
+        StageDatabase stageDatabase = AssetDatabase.LoadAssetAtPath<StageDatabase>(StageDatabasePath);
+        if (stageDatabase == null)
+        {
+            stageDatabase = ScriptableObject.CreateInstance<StageDatabase>();
+            stageDatabase.name = "StageDatabase";
+            AssetDatabase.CreateAsset(stageDatabase, StageDatabasePath);
+        }
+
+        EnsureStageDatabaseEntries(stageDatabase, requiredStages);
+        return stageDatabase;
+    }
+
+    private static void EnsureStageDatabaseEntries(StageDatabase stageDatabase, params StageData[] requiredStages)
+    {
+        if (stageDatabase == null)
+        {
+            return;
+        }
+
+        SerializedObject serializedObject = new SerializedObject(stageDatabase);
+        SerializedProperty stagesProperty = serializedObject.FindProperty("stages");
+        if (stagesProperty == null || !stagesProperty.isArray)
+        {
+            Debug.LogWarning("StageDatabase stages property was not found.");
+            return;
+        }
+
+        List<StageData> orderedStages = new List<StageData>();
+        for (int i = 0; i < requiredStages.Length; i++)
+        {
+            AddUniqueStage(orderedStages, requiredStages[i]);
+        }
+
+        for (int i = 0; i < stagesProperty.arraySize; i++)
+        {
+            SerializedProperty element = stagesProperty.GetArrayElementAtIndex(i);
+            AddUniqueStage(orderedStages, element.objectReferenceValue as StageData);
+        }
+
+        stagesProperty.arraySize = orderedStages.Count;
+        for (int i = 0; i < orderedStages.Count; i++)
+        {
+            stagesProperty.GetArrayElementAtIndex(i).objectReferenceValue = orderedStages[i];
+        }
+
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(stageDatabase);
+    }
+
+    private static void AddUniqueStage(List<StageData> stages, StageData stageData)
+    {
+        if (stageData == null || stages.Contains(stageData))
+        {
+            return;
+        }
+
+        stages.Add(stageData);
+    }
+
     private static void CreatePaddlePrefab(Sprite squareSprite, PhysicsMaterial2D bouncyMaterial)
     {
         GameObject paddle = new GameObject("Paddle");
@@ -407,29 +550,34 @@ public static class Milestone1SceneBuilder
     private static void CreateTitleScene()
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        CreateBootstrap(0, null);
+        CreateBootstrap(0, null, null);
         EditorSceneManager.SaveScene(scene, TitleScenePath);
     }
 
-    private static void CreateStageSelectScene()
+    private static void CreateStageSelectScene(StageData stageData, StageDatabase stageDatabase)
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        CreateBootstrap(1, null);
+        CreateBootstrap(1, stageData, stageDatabase);
         EditorSceneManager.SaveScene(scene, StageSelectScenePath);
     }
 
     private static void CreateGameScene(StageData stageData)
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        CreateBootstrap(2, stageData);
+        CreateBootstrap(2, stageData, null);
         EditorSceneManager.SaveScene(scene, GameScenePath);
     }
 
-    private static Milestone1SceneBootstrap CreateBootstrap(int sceneKind, StageData stageData)
+    private static Milestone1SceneBootstrap CreateBootstrap(int sceneKind, StageData stageData, StageDatabase stageDatabase)
     {
         GameObject bootstrapObject = new GameObject("Milestone1Bootstrap");
         Milestone1SceneBootstrap bootstrap = bootstrapObject.AddComponent<Milestone1SceneBootstrap>();
         SetEnumIndex(bootstrap, "sceneKind", sceneKind);
+
+        if (stageDatabase != null)
+        {
+            SetObjectReference(bootstrap, "stageDatabase", stageDatabase);
+        }
 
         if (stageData != null)
         {

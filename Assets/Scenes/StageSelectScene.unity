@@ -167,3 +167,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sceneKind: 1
+  stageData: {fileID: 11400000, guid: bfeea734bf5f4948a6676400ce18302c, type: 2}
+  stageDatabase: {fileID: 11400000, guid: 9fccff2f8f494e2ea7f07f0885fbea89, type: 2}
+  stageName: Stage 1
+  fallbackBackgroundSprite: {fileID: 0}
+  blockRows: 6
+  blockColumns: 10
+  blockSize: 0.6
+  blockSpacing: 0.12
+  blockStartPosition: {x: -3.24, y: 3.25}
+  ballSpeed: 7
+  paddleSpeed: 9
+  initialLives: 3
+  itemDropChance: 0.5
+  paddleExpandMultiplier: 1.5
+  paddleExpandDuration: 8
+  addBallsCount: 2
+  addBallLaunchAngle: 25
+  addBallSpeed: 7

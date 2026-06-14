@@ -15,6 +15,7 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
 
     [SerializeField] private int initialLives = 3;
+    [SerializeField] private int stageId = 1;
     [SerializeField] private string stageName = "Stage 1";
     [SerializeField] private BallController ball;
     [SerializeField] private BallController ballPrefab;
@@ -84,9 +85,15 @@ public class GameManager : MonoBehaviour
 
     public void Configure(BallController ballController, UIManager manager, string displayStageName, int livesCount)
     {
+        Configure(ballController, manager, displayStageName, livesCount, 1);
+    }
+
+    public void Configure(BallController ballController, UIManager manager, string displayStageName, int livesCount, int currentStageId)
+    {
         ball = ballController;
         uiManager = manager;
         stageName = displayStageName;
+        stageId = Mathf.Max(1, currentStageId);
         initialLives = Mathf.Max(1, livesCount);
         lives = initialLives;
         CurrentState = GameState.ReadyToLaunch;
@@ -311,6 +318,7 @@ public class GameManager : MonoBehaviour
     {
         CurrentState = GameState.Clear;
         Debug.Log("Stage clear.");
+        StageUnlockManager.UnlockNextStage(stageId);
 
         CleanupStageObjects();
 
@@ -478,6 +486,7 @@ public class GameManager : MonoBehaviour
 
     private void OnValidate()
     {
+        stageId = Mathf.Max(1, stageId);
         extraBallLaunchAngle = Mathf.Max(0f, extraBallLaunchAngle);
         extraBallSpeed = Mathf.Max(0.1f, extraBallSpeed);
     }
