@@ -68,6 +68,13 @@ public class ItemEffectManager : MonoBehaviour
 
     public void ApplyItemEffect(ItemType itemType)
     {
+        FindMissingReferences();
+
+        if (gameManager != null && gameManager.IsStageFinished)
+        {
+            return;
+        }
+
         Debug.Log($"Item acquired: {itemType}");
 
         switch (itemType)
@@ -89,8 +96,6 @@ public class ItemEffectManager : MonoBehaviour
 
     private void ApplyPaddleExpand()
     {
-        FindMissingReferences();
-
         if (paddle == null)
         {
             Debug.LogWarning("PaddleController not found. Paddle expand could not be applied.");
@@ -103,8 +108,6 @@ public class ItemEffectManager : MonoBehaviour
 
     private void ApplyLifeUp()
     {
-        FindMissingReferences();
-
         if (gameManager == null)
         {
             Debug.LogWarning("GameManager not found. Life up could not be applied.");
@@ -116,15 +119,12 @@ public class ItemEffectManager : MonoBehaviour
 
     private void ApplyAddBalls()
     {
-        FindMissingReferences();
-
         if (gameManager == null)
         {
             Debug.LogWarning("GameManager not found. AddBalls could not be applied.");
             return;
         }
 
-        Debug.Log("AddBalls effect requested.");
         gameManager.AddExtraBalls(addBallsCount);
     }
 

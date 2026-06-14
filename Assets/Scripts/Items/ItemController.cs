@@ -86,7 +86,6 @@ public class ItemController : MonoBehaviour
             return;
         }
 
-        Debug.Log($"Item touched paddle: {itemType}");
         Collect();
     }
 

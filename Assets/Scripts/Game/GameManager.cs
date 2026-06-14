@@ -31,6 +31,7 @@ public class GameManager : MonoBehaviour
 
     public GameState CurrentState { get; private set; }
     public bool CanLaunchBall => CurrentState == GameState.ReadyToLaunch;
+    public bool IsStageFinished => CurrentState == GameState.Clear || CurrentState == GameState.GameOver;
 
     private void Awake()
     {
@@ -135,7 +136,7 @@ public class GameManager : MonoBehaviour
 
     public void NotifyBlockDestroyed()
     {
-        if (CurrentState == GameState.Clear || CurrentState == GameState.GameOver)
+        if (IsStageFinished)
         {
             return;
         }
@@ -155,7 +156,7 @@ public class GameManager : MonoBehaviour
 
     public void NotifyBallLost(BallController lostBall)
     {
-        if (CurrentState == GameState.Clear || CurrentState == GameState.GameOver)
+        if (IsStageFinished)
         {
             return;
         }
@@ -297,6 +298,7 @@ public class GameManager : MonoBehaviour
 
     public void RestartScene()
     {
+        CleanupStageObjects();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
@@ -310,7 +312,7 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.Clear;
         Debug.Log("Stage clear.");
 
-        StopAllBalls();
+        CleanupStageObjects();
 
         if (uiManager != null)
         {
@@ -323,7 +325,7 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.GameOver;
         Debug.Log("Game over.");
 
-        StopAllBalls();
+        CleanupStageObjects();
 
         if (uiManager != null)
         {
@@ -433,33 +435,45 @@ public class GameManager : MonoBehaviour
         return Quaternion.Euler(0f, 0f, angle) * Vector2.up;
     }
 
-    private void StopAllBalls()
+    private void CleanupStageObjects()
     {
-        CleanActiveBalls();
+        ItemController[] items = Resources.FindObjectsOfTypeAll<ItemController>();
 
-        for (int i = activeBalls.Count - 1; i >= 0; i--)
+        for (int i = 0; i < items.Length; i++)
         {
-            BallController activeBall = activeBalls[i];
-            if (activeBall == null)
+            ItemController currentItem = items[i];
+            if (!IsRuntimeSceneObject(currentItem))
             {
                 continue;
             }
 
-            if (activeBall == ball)
+            currentItem.gameObject.SetActive(false);
+            Destroy(currentItem.gameObject);
+        }
+
+        BallController[] balls = Resources.FindObjectsOfTypeAll<BallController>();
+
+        for (int i = 0; i < balls.Length; i++)
+        {
+            BallController currentBall = balls[i];
+            if (!IsRuntimeSceneObject(currentBall))
             {
-                activeBall.StopBall();
                 continue;
             }
 
-            Destroy(activeBall.gameObject);
+            currentBall.StopBall();
+            currentBall.gameObject.SetActive(false);
+            Destroy(currentBall.gameObject);
         }
 
         activeBalls.Clear();
+    }
 
-        if (ball != null)
-        {
-            ball.StopBall();
-        }
+    private static bool IsRuntimeSceneObject(Component component)
+    {
+        return component != null
+            && component.gameObject.scene.IsValid()
+            && component.gameObject.scene.isLoaded;
     }
 
     private void OnValidate()
