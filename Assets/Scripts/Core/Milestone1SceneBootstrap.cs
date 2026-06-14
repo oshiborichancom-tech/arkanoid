@@ -5,6 +5,18 @@ using UnityEngine.UI;
 
 public class Milestone1SceneBootstrap : MonoBehaviour
 {
+    private const string DefaultStageName = "Stage 1";
+    private const int DefaultBlockRows = 5;
+    private const int DefaultBlockColumns = 10;
+    private const float DefaultBlockSize = 0.6f;
+    private const float DefaultBlockSpacing = 0.12f;
+    private const float DefaultBallSpeed = 7f;
+    private const float DefaultPaddleSpeed = 9f;
+    private const int DefaultInitialLives = 3;
+    private const int DefaultAddBallsCount = 2;
+    private const float DefaultAddBallSpeed = 7f;
+    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
+
     private enum SceneKind
     {
         Title,
@@ -13,17 +25,48 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     }
 
     [SerializeField] private SceneKind sceneKind = SceneKind.Title;
+    [SerializeField] private StageData stageData;
+    [SerializeField] private string stageName = DefaultStageName;
+    [SerializeField] private Sprite fallbackBackgroundSprite;
+    [SerializeField] private int blockRows = DefaultBlockRows;
+    [SerializeField] private int blockColumns = DefaultBlockColumns;
+    [SerializeField] private float blockSize = DefaultBlockSize;
+    [SerializeField] private float blockSpacing = DefaultBlockSpacing;
+    [SerializeField] private Vector2 blockStartPosition = DefaultBlockStartPosition;
+    [SerializeField] private float ballSpeed = DefaultBallSpeed;
+    [SerializeField] private float paddleSpeed = DefaultPaddleSpeed;
+    [SerializeField] private int initialLives = DefaultInitialLives;
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
     [SerializeField] private float paddleExpandMultiplier = 1.5f;
     [SerializeField] private float paddleExpandDuration = 8f;
-    [SerializeField] private int addBallsCount = 2;
+    [SerializeField] private int addBallsCount = DefaultAddBallsCount;
     [SerializeField] private float addBallLaunchAngle = 25f;
-    [SerializeField] private float addBallSpeed = 7f;
+    [SerializeField] private float addBallSpeed = DefaultAddBallSpeed;
 
     private static Sprite squareSprite;
     private static Sprite ballSprite;
     private static Sprite backgroundSprite;
     private static Font defaultFont;
+
+    private struct StageRuntimeSettings
+    {
+        public string StageName;
+        public Sprite BackgroundSprite;
+        public int BlockRows;
+        public int BlockColumns;
+        public float BlockSize;
+        public float BlockSpacing;
+        public Vector2 BlockStartPosition;
+        public float BallSpeed;
+        public float PaddleSpeed;
+        public int InitialLives;
+        public float ItemDropChance;
+        public float PaddleExpandMultiplier;
+        public float PaddleExpandDuration;
+        public int AddBallsCount;
+        public float AddBallLaunchAngle;
+        public float AddBallSpeed;
+    }
 
     private void Awake()
     {
@@ -38,25 +81,78 @@ public class Milestone1SceneBootstrap : MonoBehaviour
                 BuildStageSelectScene();
                 break;
             case SceneKind.Game:
-                BuildGameScene(
-                    itemDropChance,
-                    paddleExpandMultiplier,
-                    paddleExpandDuration,
-                    addBallsCount,
-                    addBallLaunchAngle,
-                    addBallSpeed);
+                BuildGameScene(CreateStageSettings());
                 break;
         }
     }
 
     private void OnValidate()
     {
+        if (string.IsNullOrWhiteSpace(stageName))
+        {
+            stageName = DefaultStageName;
+        }
+
+        blockRows = blockRows > 0 ? blockRows : DefaultBlockRows;
+        blockColumns = blockColumns > 0 ? blockColumns : DefaultBlockColumns;
+        blockSize = blockSize > 0f ? blockSize : DefaultBlockSize;
+        blockSpacing = Mathf.Max(0f, blockSpacing);
+        ballSpeed = ballSpeed > 0f ? ballSpeed : DefaultBallSpeed;
+        paddleSpeed = paddleSpeed > 0f ? paddleSpeed : DefaultPaddleSpeed;
+        initialLives = initialLives > 0 ? initialLives : DefaultInitialLives;
         itemDropChance = Mathf.Clamp01(itemDropChance);
         paddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier);
         paddleExpandDuration = Mathf.Max(0f, paddleExpandDuration);
-        addBallsCount = Mathf.Max(1, addBallsCount);
+        addBallsCount = addBallsCount > 0 ? addBallsCount : DefaultAddBallsCount;
         addBallLaunchAngle = Mathf.Max(0f, addBallLaunchAngle);
-        addBallSpeed = Mathf.Max(0.1f, addBallSpeed);
+        addBallSpeed = addBallSpeed > 0f ? addBallSpeed : DefaultAddBallSpeed;
+    }
+
+    private StageRuntimeSettings CreateStageSettings()
+    {
+        StageRuntimeSettings settings = new StageRuntimeSettings
+        {
+            StageName = string.IsNullOrWhiteSpace(stageName) ? DefaultStageName : stageName,
+            BackgroundSprite = fallbackBackgroundSprite,
+            BlockRows = blockRows > 0 ? blockRows : DefaultBlockRows,
+            BlockColumns = blockColumns > 0 ? blockColumns : DefaultBlockColumns,
+            BlockSize = blockSize > 0f ? blockSize : DefaultBlockSize,
+            BlockSpacing = Mathf.Max(0f, blockSpacing),
+            BlockStartPosition = blockStartPosition,
+            BallSpeed = ballSpeed > 0f ? ballSpeed : DefaultBallSpeed,
+            PaddleSpeed = paddleSpeed > 0f ? paddleSpeed : DefaultPaddleSpeed,
+            InitialLives = initialLives > 0 ? initialLives : DefaultInitialLives,
+            ItemDropChance = Mathf.Clamp01(itemDropChance),
+            PaddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier),
+            PaddleExpandDuration = Mathf.Max(0f, paddleExpandDuration),
+            AddBallsCount = addBallsCount > 0 ? addBallsCount : DefaultAddBallsCount,
+            AddBallLaunchAngle = Mathf.Max(0f, addBallLaunchAngle),
+            AddBallSpeed = addBallSpeed > 0f ? addBallSpeed : DefaultAddBallSpeed
+        };
+
+        if (stageData == null)
+        {
+            return settings;
+        }
+
+        settings.StageName = stageData.StageName;
+        settings.BackgroundSprite = stageData.BackgroundSprite != null ? stageData.BackgroundSprite : settings.BackgroundSprite;
+        settings.BlockRows = stageData.BlockRows;
+        settings.BlockColumns = stageData.BlockColumns;
+        settings.BlockSize = stageData.BlockSize;
+        settings.BlockSpacing = stageData.BlockSpacing;
+        settings.BlockStartPosition = stageData.BlockStartPosition;
+        settings.BallSpeed = stageData.BallSpeed;
+        settings.PaddleSpeed = stageData.PaddleSpeed;
+        settings.InitialLives = stageData.InitialLives;
+        settings.ItemDropChance = stageData.ItemDropChance;
+        settings.PaddleExpandMultiplier = stageData.PaddleExpandMultiplier;
+        settings.PaddleExpandDuration = stageData.PaddleExpandDuration;
+        settings.AddBallsCount = stageData.AddBallsCount;
+        settings.AddBallLaunchAngle = stageData.AddBallLaunchAngle;
+        settings.AddBallSpeed = stageData.AddBallSpeed;
+
+        return settings;
     }
 
     private static void EnsureSharedAssets()
@@ -184,13 +280,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         backButton.onClick.AddListener(loader.LoadTitle);
     }
 
-    private static void BuildGameScene(
-        float itemDropChance,
-        float paddleExpandMultiplier,
-        float paddleExpandDuration,
-        int addBallsCount,
-        float addBallLaunchAngle,
-        float addBallSpeed)
+    private static void BuildGameScene(StageRuntimeSettings settings)
     {
         Physics2D.gravity = Vector2.zero;
         Camera camera = CreateCamera(new Color(0.04f, 0.06f, 0.08f, 1f));
@@ -200,28 +290,33 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             bounciness = 1f
         };
 
-        CreateBackground();
+        CreateBackground(settings.BackgroundSprite);
         CreateWall("LeftWall", new Vector2(-8.95f, 0f), new Vector2(0.3f, 10.4f), bouncyMaterial);
         CreateWall("RightWall", new Vector2(8.95f, 0f), new Vector2(0.3f, 10.4f), bouncyMaterial);
         CreateWall("TopWall", new Vector2(0f, 5.1f), new Vector2(18.2f, 0.3f), bouncyMaterial);
 
         GameManager gameManager = new GameObject("GameManager").AddComponent<GameManager>();
         ItemEffectManager itemEffectManager = new GameObject("ItemEffectManager").AddComponent<ItemEffectManager>();
-        GameObject paddle = CreatePaddle(camera, bouncyMaterial);
+        GameObject paddle = CreatePaddle(camera, bouncyMaterial, settings.PaddleSpeed);
         PaddleController paddleController = paddle.GetComponent<PaddleController>();
-        itemEffectManager.Configure(paddleController, gameManager, paddleExpandMultiplier, paddleExpandDuration, addBallsCount);
+        itemEffectManager.Configure(
+            paddleController,
+            gameManager,
+            settings.PaddleExpandMultiplier,
+            settings.PaddleExpandDuration,
+            settings.AddBallsCount);
         GameObject ballsParent = new GameObject("Balls");
-        GameObject ball = CreateBall(paddle.transform, gameManager, bouncyMaterial);
+        GameObject ball = CreateBall(paddle.transform, gameManager, bouncyMaterial, settings.BallSpeed);
         ball.transform.SetParent(ballsParent.transform);
 
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
         SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
 
-        Text livesText = CreateText(canvas.transform, "LivesText", "Lives: 3", 34, Color.white,
+        Text livesText = CreateText(canvas.transform, "LivesText", $"Lives: {settings.InitialLives}", 34, Color.white,
             new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -24f), new Vector2(320f, 60f), new Vector2(0f, 1f), TextAnchor.MiddleLeft);
 
-        Text stageNameText = CreateText(canvas.transform, "StageNameText", "Stage 1", 34, Color.white,
+        Text stageNameText = CreateText(canvas.transform, "StageNameText", settings.StageName, 34, Color.white,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(420f, 60f), new Vector2(0.5f, 1f), TextAnchor.MiddleCenter);
 
         Button backButton = CreateButton(canvas.transform, "BackToStageSelectButton", "Stage Select",
@@ -238,15 +333,15 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
         uiManager.Configure(livesText, stageNameText, clearText, gameOverText);
-        gameManager.Configure(ball.GetComponent<BallController>(), uiManager, "Stage 1", 3);
+        gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives);
         gameManager.ConfigureBallSpawning(
             ball.GetComponent<BallController>(),
             paddle.transform,
             ballsParent.transform,
-            addBallLaunchAngle,
-            addBallSpeed);
+            settings.AddBallLaunchAngle,
+            settings.AddBallSpeed);
 
-        CreateBlockGrid(gameManager, bouncyMaterial, itemEffectManager, itemDropChance);
+        CreateBlockGrid(gameManager, bouncyMaterial, itemEffectManager, settings);
     }
 
     private static Camera CreateCamera(Color backgroundColor)
@@ -265,12 +360,12 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return camera;
     }
 
-    private static void CreateBackground()
+    private static void CreateBackground(Sprite stageBackgroundSprite)
     {
         GameObject background = new GameObject("Background");
         background.transform.position = new Vector3(0f, 0f, 1f);
         SpriteRenderer renderer = background.AddComponent<SpriteRenderer>();
-        renderer.sprite = backgroundSprite;
+        renderer.sprite = stageBackgroundSprite != null ? stageBackgroundSprite : backgroundSprite;
         renderer.sortingOrder = -20;
     }
 
@@ -290,7 +385,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         collider.sharedMaterial = material;
     }
 
-    private static GameObject CreatePaddle(Camera camera, PhysicsMaterial2D material)
+    private static GameObject CreatePaddle(Camera camera, PhysicsMaterial2D material, float speed)
     {
         GameObject paddle = new GameObject("Paddle");
         paddle.transform.position = new Vector3(0f, -4.15f, 0f);
@@ -311,11 +406,11 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         rigidbody.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         PaddleController controller = paddle.AddComponent<PaddleController>();
-        controller.Configure(camera, 9f);
+        controller.Configure(camera, speed);
         return paddle;
     }
 
-    private static GameObject CreateBall(Transform paddle, GameManager gameManager, PhysicsMaterial2D material)
+    private static GameObject CreateBall(Transform paddle, GameManager gameManager, PhysicsMaterial2D material, float speed)
     {
         GameObject ball = new GameObject("Ball");
         ball.transform.position = new Vector3(0f, -3.7f, 0f);
@@ -337,6 +432,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         BallController controller = ball.AddComponent<BallController>();
         controller.Configure(paddle, gameManager);
+        controller.SetMoveSpeed(speed);
         return ball;
     }
 
@@ -344,9 +440,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         GameManager gameManager,
         PhysicsMaterial2D material,
         ItemEffectManager itemEffectManager,
-        float itemDropChance)
+        StageRuntimeSettings settings)
     {
-        float safeDropChance = Mathf.Clamp01(itemDropChance);
+        float safeDropChance = Mathf.Clamp01(settings.ItemDropChance);
         GameObject runtimePrefabs = new GameObject("RuntimePrefabs");
         ItemController itemPrefab = CreateItemPrefab(runtimePrefabs.transform);
 
@@ -368,7 +464,15 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         GameObject blocksParent = new GameObject("Blocks");
 
         BlockGridBuilder builder = new GameObject("BlockGridBuilder").AddComponent<BlockGridBuilder>();
-        builder.Configure(block, gameManager, blocksParent.transform, 5, 10, 0.6f, 0.12f, new Vector2(-3.24f, 3.25f));
+        builder.Configure(
+            block,
+            gameManager,
+            blocksParent.transform,
+            settings.BlockRows,
+            settings.BlockColumns,
+            settings.BlockSize,
+            settings.BlockSpacing,
+            settings.BlockStartPosition);
         builder.ConfigureItemDrops(itemPrefab, safeDropChance, itemEffectManager);
     }
 

@@ -1,7 +1,6 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -15,10 +14,12 @@ public static class Milestone1SceneBuilder
     private const string PrefabsFolder = "Assets/prefabs";
     private const string BackgroundsFolder = "Assets/Sprites/Backgrounds";
     private const string PhysicsMaterialsFolder = "Assets/PhysicsMaterials";
+    private const string StagesFolder = "Assets/ScriptableObjects/Stages";
 
     private const string TitleScenePath = ScenesFolder + "/TitleScene.unity";
     private const string StageSelectScenePath = ScenesFolder + "/StageSelectScene.unity";
     private const string GameScenePath = ScenesFolder + "/GameScene.unity";
+    private const string Stage1DataPath = StagesFolder + "/Stage1.asset";
 
     private const string PaddlePrefabPath = PrefabsFolder + "/Paddle.prefab";
     private const string BallPrefabPath = PrefabsFolder + "/Ball.prefab";
@@ -44,6 +45,7 @@ public static class Milestone1SceneBuilder
         Sprite ballSprite = CreateCircleSprite(BallSpritePath, new Color(1f, 0.96f, 0.70f, 1f), 64, 64f);
         Sprite backgroundSprite = CreateBackgroundSprite(BackgroundSpritePath);
         PhysicsMaterial2D bouncyMaterial = CreateBouncyMaterial();
+        StageData stage1Data = EnsureStage1Data(backgroundSprite);
 
         CreatePaddlePrefab(squareSprite, bouncyMaterial);
         CreateBallPrefab(ballSprite, bouncyMaterial);
@@ -54,12 +56,12 @@ public static class Milestone1SceneBuilder
 
         CreateTitleScene();
         CreateStageSelectScene();
-        CreateGameScene(squareSprite, backgroundSprite, bouncyMaterial, itemPrefab);
+        CreateGameScene(stage1Data);
         UpdateBuildSettings();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Arkanoid Milestone 1 scenes, prefabs, and build settings were generated.");
+        Debug.Log("Arkanoid Milestone 1 scenes, prefabs, stage data, and build settings were generated.");
     }
 
     private static void BuildIfMissing()
@@ -84,6 +86,7 @@ public static class Milestone1SceneBuilder
             TitleScenePath,
             StageSelectScenePath,
             GameScenePath,
+            Stage1DataPath,
             PaddlePrefabPath,
             BallPrefabPath,
             BlockPrefabPath,
@@ -99,6 +102,7 @@ public static class Milestone1SceneBuilder
         EnsureFolder(PrefabsFolder);
         EnsureFolder(BackgroundsFolder);
         EnsureFolder(PhysicsMaterialsFolder);
+        EnsureFolder(StagesFolder);
     }
 
     private static void EnsureFolder(string folderPath)
@@ -240,6 +244,60 @@ public static class Milestone1SceneBuilder
         return material;
     }
 
+    private static StageData EnsureStage1Data(Sprite backgroundSprite)
+    {
+        StageData stageData = AssetDatabase.LoadAssetAtPath<StageData>(Stage1DataPath);
+        if (stageData != null)
+        {
+            FillMissingStage1References(stageData, backgroundSprite);
+            return stageData;
+        }
+
+        stageData = ScriptableObject.CreateInstance<StageData>();
+        stageData.name = "Stage1";
+        AssetDatabase.CreateAsset(stageData, Stage1DataPath);
+
+        SetInt(stageData, "stageId", 1);
+        SetString(stageData, "stageName", "Stage 1");
+        SetObjectReference(stageData, "backgroundSprite", backgroundSprite);
+        SetInt(stageData, "blockRows", 5);
+        SetInt(stageData, "blockColumns", 10);
+        SetFloat(stageData, "blockSize", 0.6f);
+        SetFloat(stageData, "blockSpacing", 0.12f);
+        SetVector2(stageData, "blockStartPosition", new Vector2(-3.24f, 3.25f));
+        SetFloat(stageData, "ballSpeed", 7f);
+        SetFloat(stageData, "paddleSpeed", 9f);
+        SetInt(stageData, "initialLives", 3);
+        SetFloat(stageData, "itemDropChance", 0.5f);
+        SetFloat(stageData, "paddleExpandMultiplier", 1.5f);
+        SetFloat(stageData, "paddleExpandDuration", 8f);
+        SetInt(stageData, "addBallsCount", 2);
+        SetFloat(stageData, "addBallLaunchAngle", 25f);
+        SetFloat(stageData, "addBallSpeed", 7f);
+
+        EditorUtility.SetDirty(stageData);
+        return stageData;
+    }
+
+    private static void FillMissingStage1References(StageData stageData, Sprite backgroundSprite)
+    {
+        if (stageData == null || backgroundSprite == null)
+        {
+            return;
+        }
+
+        SerializedObject serializedObject = new SerializedObject(stageData);
+        SerializedProperty backgroundProperty = serializedObject.FindProperty("backgroundSprite");
+        if (backgroundProperty == null || backgroundProperty.objectReferenceValue != null)
+        {
+            return;
+        }
+
+        backgroundProperty.objectReferenceValue = backgroundSprite;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(stageData);
+    }
+
     private static void CreatePaddlePrefab(Sprite squareSprite, PhysicsMaterial2D bouncyMaterial)
     {
         GameObject paddle = new GameObject("Paddle");
@@ -349,142 +407,52 @@ public static class Milestone1SceneBuilder
     private static void CreateTitleScene()
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        CreateMainCamera(new Color(0.05f, 0.09f, 0.15f, 1f));
-
-        SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
-        Canvas canvas = CreateCanvas();
-        CreateEventSystem();
-
-        CreateText(canvas.transform, "TitleText", "ARKANOID", 76, new Color(0.95f, 0.98f, 1f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 170f), new Vector2(760f, 120f));
-
-        Button startButton = CreateButton(canvas.transform, "StartButton", "Start",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(320f, 90f));
-        UnityEventTools.AddPersistentListener(startButton.onClick, loader.LoadStageSelect);
-
+        CreateBootstrap(0, null);
         EditorSceneManager.SaveScene(scene, TitleScenePath);
     }
 
     private static void CreateStageSelectScene()
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        CreateMainCamera(new Color(0.05f, 0.09f, 0.15f, 1f));
-
-        SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
-        Canvas canvas = CreateCanvas();
-        CreateEventSystem();
-
-        CreateText(canvas.transform, "StageSelectTitle", "Stage Select", 64, Color.white,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(760f, 100f));
-
-        Button stageButton = CreateButton(canvas.transform, "Stage1Button", "Stage 1",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(360f, 84f));
-        UnityEventTools.AddPersistentListener(stageButton.onClick, loader.LoadGame);
-
-        Button backButton = CreateButton(canvas.transform, "BackButton", "Back",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -85f), new Vector2(260f, 72f));
-        UnityEventTools.AddPersistentListener(backButton.onClick, loader.LoadTitle);
-
+        CreateBootstrap(1, null);
         EditorSceneManager.SaveScene(scene, StageSelectScenePath);
     }
 
-    private static void CreateGameScene(Sprite squareSprite, Sprite backgroundSprite, PhysicsMaterial2D bouncyMaterial, ItemController itemPrefab)
+    private static void CreateGameScene(StageData stageData)
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        Camera camera = CreateMainCamera(new Color(0.04f, 0.06f, 0.08f, 1f));
-
-        SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
-
-        GameObject background = new GameObject("Background");
-        background.transform.position = new Vector3(0f, 0f, 1f);
-        SpriteRenderer backgroundRenderer = background.AddComponent<SpriteRenderer>();
-        backgroundRenderer.sprite = backgroundSprite;
-        backgroundRenderer.sortingOrder = -20;
-
-        CreateWall("LeftWall", new Vector2(-8.95f, 0f), new Vector2(0.3f, 10.4f), squareSprite, bouncyMaterial);
-        CreateWall("RightWall", new Vector2(8.95f, 0f), new Vector2(0.3f, 10.4f), squareSprite, bouncyMaterial);
-        CreateWall("TopWall", new Vector2(0f, 5.1f), new Vector2(18.2f, 0.3f), squareSprite, bouncyMaterial);
-
-        GameObject gameManagerObject = new GameObject("GameManager");
-        GameManager gameManager = gameManagerObject.AddComponent<GameManager>();
-
-        GameObject itemEffectManagerObject = new GameObject("ItemEffectManager");
-        ItemEffectManager itemEffectManager = itemEffectManagerObject.AddComponent<ItemEffectManager>();
-
-        GameObject paddle = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(PaddlePrefabPath)) as GameObject;
-        paddle.transform.position = new Vector3(0f, -4.15f, 0f);
-        PaddleController paddleController = paddle.GetComponent<PaddleController>();
-        SetObjectReference(paddleController, "targetCamera", camera);
-        SetObjectReference(itemEffectManager, "paddle", paddleController);
-        SetObjectReference(itemEffectManager, "gameManager", gameManager);
-        SetFloat(itemEffectManager, "paddleExpandMultiplier", 1.5f);
-        SetFloat(itemEffectManager, "paddleExpandDuration", 8f);
-        SetInt(itemEffectManager, "lifeUpAmount", 1);
-        SetInt(itemEffectManager, "addBallsCount", 2);
-
-        GameObject ballsParent = new GameObject("Balls");
-        GameObject ball = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BallPrefabPath)) as GameObject;
-        ball.transform.SetParent(ballsParent.transform);
-        ball.transform.position = new Vector3(0f, -3.7f, 0f);
-        BallController ballController = ball.GetComponent<BallController>();
-        SetObjectReference(ballController, "paddle", paddle.transform);
-        SetObjectReference(ballController, "gameManager", gameManager);
-
-        Canvas canvas = CreateCanvas();
-        CreateEventSystem();
-
-        Text livesText = CreateText(canvas.transform, "LivesText", "Lives: 3", 34, Color.white,
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -24f), new Vector2(320f, 60f), new Vector2(0f, 1f), TextAnchor.MiddleLeft);
-
-        Text stageNameText = CreateText(canvas.transform, "StageNameText", "Stage 1", 34, Color.white,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(420f, 60f), new Vector2(0.5f, 1f), TextAnchor.MiddleCenter);
-
-        Button backButton = CreateButton(canvas.transform, "BackToStageSelectButton", "Stage Select",
-            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -24f), new Vector2(260f, 64f), new Vector2(1f, 1f));
-        UnityEventTools.AddPersistentListener(backButton.onClick, loader.LoadStageSelect);
-
-        Text clearText = CreateText(canvas.transform, "ClearText", "CLEAR", 86, new Color(0.98f, 0.92f, 0.30f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(620f, 120f));
-        clearText.gameObject.SetActive(false);
-
-        Text gameOverText = CreateText(canvas.transform, "GameOverText", "GAME OVER", 78, new Color(1f, 0.42f, 0.42f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(720f, 120f));
-        gameOverText.gameObject.SetActive(false);
-
-        GameObject uiManagerObject = new GameObject("UIManager");
-        UIManager uiManager = uiManagerObject.AddComponent<UIManager>();
-        SetObjectReference(uiManager, "livesText", livesText);
-        SetObjectReference(uiManager, "stageNameText", stageNameText);
-        SetObjectReference(uiManager, "clearText", clearText);
-        SetObjectReference(uiManager, "gameOverText", gameOverText);
-
-        SetInt(gameManager, "initialLives", 3);
-        SetString(gameManager, "stageName", "Stage 1");
-        SetObjectReference(gameManager, "ball", ballController);
-        SetObjectReference(gameManager, "ballPrefab", AssetDatabase.LoadAssetAtPath<GameObject>(BallPrefabPath).GetComponent<BallController>());
-        SetObjectReference(gameManager, "paddle", paddle.transform);
-        SetObjectReference(gameManager, "ballsParent", ballsParent.transform);
-        SetFloat(gameManager, "extraBallLaunchAngle", 25f);
-        SetFloat(gameManager, "extraBallSpeed", 7f);
-        SetObjectReference(gameManager, "uiManager", uiManager);
-
-        GameObject blocksParent = new GameObject("Blocks");
-        GameObject builderObject = new GameObject("BlockGridBuilder");
-        BlockGridBuilder builder = builderObject.AddComponent<BlockGridBuilder>();
-        GameObject blockPrefabObject = AssetDatabase.LoadAssetAtPath<GameObject>(BlockPrefabPath);
-        SetObjectReference(builder, "blockPrefab", blockPrefabObject.GetComponent<Block>());
-        SetObjectReference(builder, "gameManager", gameManager);
-        SetObjectReference(builder, "blocksParent", blocksParent.transform);
-        SetInt(builder, "rows", 5);
-        SetInt(builder, "columns", 10);
-        SetFloat(builder, "blockSize", 0.6f);
-        SetFloat(builder, "spacing", 0.12f);
-        SetVector2(builder, "startPosition", new Vector2(-3.24f, 3.25f));
-        SetObjectReference(builder, "itemPrefab", itemPrefab);
-        SetFloat(builder, "itemDropChance", 0.5f);
-        SetObjectReference(builder, "itemEffectManager", itemEffectManager);
-
+        CreateBootstrap(2, stageData);
         EditorSceneManager.SaveScene(scene, GameScenePath);
+    }
+
+    private static Milestone1SceneBootstrap CreateBootstrap(int sceneKind, StageData stageData)
+    {
+        GameObject bootstrapObject = new GameObject("Milestone1Bootstrap");
+        Milestone1SceneBootstrap bootstrap = bootstrapObject.AddComponent<Milestone1SceneBootstrap>();
+        SetEnumIndex(bootstrap, "sceneKind", sceneKind);
+
+        if (stageData != null)
+        {
+            SetObjectReference(bootstrap, "stageData", stageData);
+            SetString(bootstrap, "stageName", stageData.StageName);
+            SetObjectReference(bootstrap, "fallbackBackgroundSprite", stageData.BackgroundSprite);
+            SetInt(bootstrap, "blockRows", stageData.BlockRows);
+            SetInt(bootstrap, "blockColumns", stageData.BlockColumns);
+            SetFloat(bootstrap, "blockSize", stageData.BlockSize);
+            SetFloat(bootstrap, "blockSpacing", stageData.BlockSpacing);
+            SetVector2(bootstrap, "blockStartPosition", stageData.BlockStartPosition);
+            SetFloat(bootstrap, "ballSpeed", stageData.BallSpeed);
+            SetFloat(bootstrap, "paddleSpeed", stageData.PaddleSpeed);
+            SetInt(bootstrap, "initialLives", stageData.InitialLives);
+            SetFloat(bootstrap, "itemDropChance", stageData.ItemDropChance);
+            SetFloat(bootstrap, "paddleExpandMultiplier", stageData.PaddleExpandMultiplier);
+            SetFloat(bootstrap, "paddleExpandDuration", stageData.PaddleExpandDuration);
+            SetInt(bootstrap, "addBallsCount", stageData.AddBallsCount);
+            SetFloat(bootstrap, "addBallLaunchAngle", stageData.AddBallLaunchAngle);
+            SetFloat(bootstrap, "addBallSpeed", stageData.AddBallSpeed);
+        }
+
+        return bootstrap;
     }
 
     private static Camera CreateMainCamera(Color backgroundColor)
@@ -663,6 +631,29 @@ public static class Milestone1SceneBuilder
         }
 
         property.intValue = value;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetEnumIndex(Object target, string propertyName, int value)
+    {
+        SerializedObject serializedObject = new SerializedObject(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+
+        if (property == null)
+        {
+            Debug.LogWarning($"Serialized property '{propertyName}' was not found on {target.name}.");
+            return;
+        }
+
+        if (property.propertyType == SerializedPropertyType.Enum)
+        {
+            property.enumValueIndex = value;
+        }
+        else
+        {
+            property.intValue = value;
+        }
+
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }
 

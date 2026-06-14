@@ -130,6 +130,11 @@ public class BallController : MonoBehaviour
         gameManager = manager;
     }
 
+    public void SetMoveSpeed(float speed)
+    {
+        moveSpeed = Mathf.Max(0.1f, speed);
+    }
+
     public void LaunchFrom(Vector2 position, Vector2 direction, float speed)
     {
         gameObject.SetActive(true);
