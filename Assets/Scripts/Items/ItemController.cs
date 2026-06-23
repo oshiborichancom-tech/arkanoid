@@ -4,13 +4,25 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class ItemController : MonoBehaviour
 {
+    private const int ItemSortingOrder = 15;
+    private const int LabelSortingOrderOffset = 1;
+    private const string LabelObjectName = "Label";
+
     [SerializeField] private ItemType itemType = ItemType.PaddleExpand;
     [SerializeField] private float fallSpeed = 2.5f;
     [SerializeField] private float destroyY = -5.8f;
     [SerializeField] private ItemEffectManager itemEffectManager;
     [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private TextMesh labelText;
+    [SerializeField] private Color paddleExpandColor = new Color(0.30f, 0.68f, 1f, 1f);
+    [SerializeField] private Color lifeUpColor = new Color(0.35f, 0.92f, 0.55f, 1f);
+    [SerializeField] private Color addBallsColor = new Color(1f, 0.72f, 0.22f, 1f);
+    [SerializeField] private Color labelColor = Color.white;
+    [SerializeField] private int labelFontSize = 64;
+    [SerializeField] private float labelCharacterSize = 0.12f;
 
     private static Sprite fallbackSprite;
+    private static Font labelFont;
 
     private Rigidbody2D itemRigidbody;
     private Collider2D itemCollider;
@@ -21,14 +33,9 @@ public class ItemController : MonoBehaviour
         itemRigidbody = GetComponent<Rigidbody2D>();
         itemCollider = GetComponent<Collider2D>();
 
-        if (spriteRenderer == null)
-        {
-            spriteRenderer = GetComponent<SpriteRenderer>();
-        }
-
         ConfigurePhysics();
         EnsureVisual();
-        ApplyTypeVisual();
+        ApplyVisual();
     }
 
     private void Start()
@@ -76,7 +83,7 @@ public class ItemController : MonoBehaviour
     {
         itemType = type;
         itemEffectManager = manager;
-        ApplyTypeVisual();
+        ApplyVisual();
     }
 
     private void TryCollectFrom(Collider2D other)
@@ -138,6 +145,8 @@ public class ItemController : MonoBehaviour
 
     private void EnsureVisual()
     {
+        CacheVisualReferences();
+
         if (spriteRenderer == null)
         {
             return;
@@ -148,28 +157,151 @@ public class ItemController : MonoBehaviour
             spriteRenderer.sprite = GetFallbackSprite();
         }
 
-        spriteRenderer.sortingOrder = 15;
+        spriteRenderer.sortingOrder = ItemSortingOrder;
+        EnsureLabelVisual();
     }
 
-    private void ApplyTypeVisual()
+    private void CacheVisualReferences()
     {
+        if (spriteRenderer == null)
+        {
+            spriteRenderer = GetComponent<SpriteRenderer>();
+        }
+
+        if (labelText == null)
+        {
+            labelText = GetComponentInChildren<TextMesh>(true);
+        }
+    }
+
+    private void EnsureLabelVisual()
+    {
+        if (labelText == null)
+        {
+            labelText = CreateLabelText();
+        }
+
+        if (labelText == null)
+        {
+            return;
+        }
+
+        Transform labelTransform = labelText.transform;
+        labelTransform.localPosition = Vector3.zero;
+        labelTransform.localRotation = Quaternion.identity;
+        labelTransform.localScale = Vector3.one;
+
+        labelText.anchor = TextAnchor.MiddleCenter;
+        labelText.alignment = TextAlignment.Center;
+        labelText.fontSize = Mathf.Max(1, labelFontSize);
+        labelText.characterSize = Mathf.Max(0.01f, labelCharacterSize);
+        labelText.color = labelColor;
+
+        Font font = GetLabelFont();
+        if (font != null)
+        {
+            labelText.font = font;
+        }
+
+        UpdateLabelRenderer();
+    }
+
+    private TextMesh CreateLabelText()
+    {
+        GameObject labelObject = new GameObject(LabelObjectName);
+        labelObject.transform.SetParent(transform, false);
+        return labelObject.AddComponent<TextMesh>();
+    }
+
+    private void ApplyVisual()
+    {
+        EnsureVisual();
+
         if (spriteRenderer == null)
         {
             return;
         }
 
-        switch (itemType)
+        spriteRenderer.color = GetItemColor(itemType);
+
+        if (labelText != null)
+        {
+            labelText.text = GetItemLabel(itemType);
+            labelText.color = labelColor;
+            UpdateLabelRenderer();
+        }
+    }
+
+    private void UpdateLabelRenderer()
+    {
+        if (labelText == null)
+        {
+            return;
+        }
+
+        MeshRenderer labelRenderer = labelText.GetComponent<MeshRenderer>();
+        if (labelRenderer == null)
+        {
+            labelRenderer = labelText.gameObject.AddComponent<MeshRenderer>();
+        }
+
+        labelRenderer.sortingOrder = spriteRenderer != null
+            ? spriteRenderer.sortingOrder + LabelSortingOrderOffset
+            : ItemSortingOrder + LabelSortingOrderOffset;
+
+        if (labelText.font != null)
+        {
+            labelRenderer.sharedMaterial = labelText.font.material;
+        }
+    }
+
+    private Color GetItemColor(ItemType type)
+    {
+        switch (type)
         {
             case ItemType.PaddleExpand:
-                spriteRenderer.color = new Color(0.38f, 0.95f, 0.70f, 1f);
-                break;
+                return paddleExpandColor;
             case ItemType.LifeUp:
-                spriteRenderer.color = new Color(1f, 0.82f, 0.32f, 1f);
-                break;
+                return lifeUpColor;
             case ItemType.AddBalls:
-                spriteRenderer.color = new Color(0.55f, 0.78f, 1f, 1f);
-                break;
+                return addBallsColor;
+            default:
+                return Color.white;
         }
+    }
+
+    private static string GetItemLabel(ItemType type)
+    {
+        switch (type)
+        {
+            case ItemType.PaddleExpand:
+                return "P";
+            case ItemType.LifeUp:
+                return "L";
+            case ItemType.AddBalls:
+                return "B";
+            default:
+                return "?";
+        }
+    }
+
+    private static Font GetLabelFont()
+    {
+        if (labelFont != null)
+        {
+            return labelFont;
+        }
+
+        try
+        {
+            labelFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning($"Built-in item label font could not be loaded. {exception.Message}");
+        }
+
+        return labelFont;
     }
 
     private static Sprite GetFallbackSprite()
@@ -203,5 +335,21 @@ public class ItemController : MonoBehaviour
     private void OnValidate()
     {
         fallSpeed = Mathf.Max(0f, fallSpeed);
+        labelFontSize = Mathf.Max(1, labelFontSize);
+        labelCharacterSize = Mathf.Max(0.01f, labelCharacterSize);
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.color = GetItemColor(itemType);
+        }
+
+        if (labelText != null)
+        {
+            labelText.text = GetItemLabel(itemType);
+            labelText.color = labelColor;
+            labelText.fontSize = labelFontSize;
+            labelText.characterSize = labelCharacterSize;
+            UpdateLabelRenderer();
+        }
     }
 }

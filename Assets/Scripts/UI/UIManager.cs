@@ -3,8 +3,9 @@ using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    public const string ClearMessage = "CLEAR!\nStage Select: Back to Stage Select\nR: Restart";
-    public const string GameOverMessage = "GAME OVER\nR: Restart\nStage Select: Back to Stage Select";
+    public const string ClearMessage = "CLEAR!\nNext stage unlocked.\nPress R to retry\nor select another stage.";
+    public const string FinalClearMessage = "CLEAR!\nAll stages cleared.\nPress R to retry\nor return to Stage Select.";
+    public const string GameOverMessage = "GAME OVER\nPress R to retry\nor return to Stage Select.";
 
     [SerializeField] private Text livesText;
     [SerializeField] private Text stageNameText;
@@ -38,13 +39,26 @@ public class UIManager : MonoBehaviour
 
     public void ShowPlaying()
     {
-        SetActive(clearText, false);
-        SetActive(gameOverText, false);
+        HideResult();
     }
 
     public void ShowClear()
     {
+        ShowClear(true, false);
+    }
+
+    public void ShowClear(bool unlockedNextStage, bool isFinalStage)
+    {
         SetText(clearText, ClearMessage);
+        if (isFinalStage)
+        {
+            SetText(clearText, FinalClearMessage);
+        }
+        else if (!unlockedNextStage)
+        {
+            SetText(clearText, "CLEAR!\nPress R to retry\nor return to Stage Select.");
+        }
+
         SetActive(clearText, true);
         SetActive(gameOverText, false);
     }
@@ -54,6 +68,12 @@ public class UIManager : MonoBehaviour
         SetActive(clearText, false);
         SetText(gameOverText, GameOverMessage);
         SetActive(gameOverText, true);
+    }
+
+    public void HideResult()
+    {
+        SetActive(clearText, false);
+        SetActive(gameOverText, false);
     }
 
     private static void SetText(Text text, string value)

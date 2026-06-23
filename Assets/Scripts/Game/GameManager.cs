@@ -24,6 +24,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float extraBallLaunchAngle = 25f;
     [SerializeField] private float extraBallSpeed = 7f;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private bool hasNextStage = true;
     [SerializeField] private bool autoFindReferences = true;
 
     private int lives;
@@ -85,15 +86,21 @@ public class GameManager : MonoBehaviour
 
     public void Configure(BallController ballController, UIManager manager, string displayStageName, int livesCount)
     {
-        Configure(ballController, manager, displayStageName, livesCount, 1);
+        Configure(ballController, manager, displayStageName, livesCount, 1, true);
     }
 
     public void Configure(BallController ballController, UIManager manager, string displayStageName, int livesCount, int currentStageId)
+    {
+        Configure(ballController, manager, displayStageName, livesCount, currentStageId, true);
+    }
+
+    public void Configure(BallController ballController, UIManager manager, string displayStageName, int livesCount, int currentStageId, bool stageHasNextStage)
     {
         ball = ballController;
         uiManager = manager;
         stageName = displayStageName;
         stageId = Mathf.Max(1, currentStageId);
+        hasNextStage = stageHasNextStage;
         initialLives = Mathf.Max(1, livesCount);
         lives = initialLives;
         CurrentState = GameState.ReadyToLaunch;
@@ -317,13 +324,19 @@ public class GameManager : MonoBehaviour
     {
         CurrentState = GameState.Clear;
         Debug.Log("Stage clear.");
-        StageUnlockManager.UnlockNextStage(stageId);
+        bool unlockedNextStage = hasNextStage;
+        bool isFinalStage = !hasNextStage;
+
+        if (hasNextStage)
+        {
+            StageUnlockManager.UnlockNextStage(stageId);
+        }
 
         CleanupStageObjects();
 
         if (uiManager != null)
         {
-            uiManager.ShowClear();
+            uiManager.ShowClear(unlockedNextStage, isFinalStage);
         }
     }
 

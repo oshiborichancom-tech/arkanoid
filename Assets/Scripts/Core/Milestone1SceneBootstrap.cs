@@ -53,6 +53,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private struct StageRuntimeSettings
     {
         public int StageId;
+        public bool HasNextStage;
         public string StageName;
         public Sprite BackgroundSprite;
         public int BlockRows;
@@ -116,6 +117,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         StageRuntimeSettings settings = new StageRuntimeSettings
         {
             StageId = 1,
+            HasNextStage = true,
             StageName = string.IsNullOrWhiteSpace(stageName) ? DefaultStageName : stageName,
             BackgroundSprite = fallbackBackgroundSprite,
             BlockRows = blockRows > 0 ? blockRows : DefaultBlockRows,
@@ -160,6 +162,11 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         settings.AddBallsCount = effectiveStageData.AddBallsCount;
         settings.AddBallLaunchAngle = effectiveStageData.AddBallLaunchAngle;
         settings.AddBallSpeed = effectiveStageData.AddBallSpeed;
+
+        if (stageDatabase != null && stageDatabase.Stages.Count > 0)
+        {
+            settings.HasNextStage = stageDatabase.HasStageAfter(settings.StageId);
+        }
 
         return settings;
     }
@@ -415,7 +422,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
         uiManager.Configure(livesText, stageNameText, clearText, gameOverText);
-        gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId);
+        gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
         gameManager.ConfigureBallSpawning(
             ball.GetComponent<BallController>(),
             paddle.transform,
@@ -567,8 +574,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         SpriteRenderer renderer = itemPrefab.AddComponent<SpriteRenderer>();
         renderer.sprite = squareSprite;
-        renderer.color = new Color(0.38f, 0.95f, 0.70f, 1f);
+        renderer.color = new Color(0.30f, 0.68f, 1f, 1f);
         renderer.sortingOrder = 15;
+        CreateItemLabel(itemPrefab.transform, "P", renderer.sortingOrder + 1);
 
         CircleCollider2D collider = itemPrefab.AddComponent<CircleCollider2D>();
         collider.radius = 0.5f;
@@ -581,6 +589,45 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         rigidbody.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         return itemPrefab.AddComponent<ItemController>();
+    }
+
+    private static TextMesh CreateItemLabel(Transform parent, string label, int sortingOrder)
+    {
+        GameObject labelObject = new GameObject("Label");
+        labelObject.transform.SetParent(parent, false);
+        labelObject.transform.localPosition = Vector3.zero;
+        labelObject.transform.localRotation = Quaternion.identity;
+        labelObject.transform.localScale = Vector3.one;
+
+        TextMesh textMesh = labelObject.AddComponent<TextMesh>();
+        textMesh.text = label;
+        textMesh.anchor = TextAnchor.MiddleCenter;
+        textMesh.alignment = TextAlignment.Center;
+        textMesh.fontSize = 64;
+        textMesh.characterSize = 0.12f;
+        textMesh.color = Color.white;
+
+        if (defaultFont != null)
+        {
+            textMesh.font = defaultFont;
+        }
+
+        MeshRenderer renderer = labelObject.GetComponent<MeshRenderer>();
+        if (renderer == null)
+        {
+            renderer = labelObject.AddComponent<MeshRenderer>();
+        }
+
+        if (renderer != null)
+        {
+            renderer.sortingOrder = sortingOrder;
+            if (textMesh.font != null)
+            {
+                renderer.sharedMaterial = textMesh.font.material;
+            }
+        }
+
+        return textMesh;
     }
 
     private static Canvas CreateCanvas()

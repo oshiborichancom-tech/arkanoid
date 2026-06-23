@@ -168,6 +168,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sceneKind: 2
   stageData: {fileID: 11400000, guid: bfeea734bf5f4948a6676400ce18302c, type: 2}
+  stageDatabase: {fileID: 11400000, guid: 9fccff2f8f494e2ea7f07f0885fbea89, type: 2}
   stageName: Stage 1
   fallbackBackgroundSprite: {fileID: 0}
   blockRows: 5
