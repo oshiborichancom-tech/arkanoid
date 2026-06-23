@@ -143,8 +143,6 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             return settings;
         }
 
-        Debug.Log($"GameScene using stage data: {effectiveStageData.StageName}");
-
         settings.StageId = effectiveStageData.StageId;
         settings.StageName = effectiveStageData.StageName;
         settings.BackgroundSprite = effectiveStageData.BackgroundSprite != null ? effectiveStageData.BackgroundSprite : settings.BackgroundSprite;
@@ -316,7 +314,6 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             }
 
             bool isUnlocked = StageUnlockManager.IsStageUnlocked(currentStageData.StageId);
-            Debug.Log($"Stage {currentStageData.StageId} unlocked: {isUnlocked}");
 
             CreateStageSelectButton(
                 parent,
@@ -334,7 +331,6 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             return 0;
         }
 
-        Debug.Log($"StageSelect loaded stages: {buttonCount}");
         return buttonCount;
     }
 
@@ -409,12 +405,12 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -24f), new Vector2(260f, 64f), new Vector2(1f, 1f));
         backButton.onClick.AddListener(loader.LoadStageSelect);
 
-        Text clearText = CreateText(canvas.transform, "ClearText", "CLEAR", 86, new Color(0.98f, 0.92f, 0.30f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(620f, 120f));
+        Text clearText = CreateText(canvas.transform, "ClearText", UIManager.ClearMessage, 42, new Color(0.98f, 0.92f, 0.30f, 1f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(980f, 260f));
         clearText.gameObject.SetActive(false);
 
-        Text gameOverText = CreateText(canvas.transform, "GameOverText", "GAME OVER", 78, new Color(1f, 0.42f, 0.42f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(720f, 120f));
+        Text gameOverText = CreateText(canvas.transform, "GameOverText", UIManager.GameOverMessage, 42, new Color(1f, 0.42f, 0.42f, 1f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(980f, 260f));
         gameOverText.gameObject.SetActive(false);
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();

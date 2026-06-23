@@ -3,6 +3,9 @@ using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
+    public const string ClearMessage = "CLEAR!\nStage Select: Back to Stage Select\nR: Restart";
+    public const string GameOverMessage = "GAME OVER\nR: Restart\nStage Select: Back to Stage Select";
+
     [SerializeField] private Text livesText;
     [SerializeField] private Text stageNameText;
     [SerializeField] private Text clearText;
@@ -41,6 +44,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowClear()
     {
+        SetText(clearText, ClearMessage);
         SetActive(clearText, true);
         SetActive(gameOverText, false);
     }
@@ -48,7 +52,16 @@ public class UIManager : MonoBehaviour
     public void ShowGameOver()
     {
         SetActive(clearText, false);
+        SetText(gameOverText, GameOverMessage);
         SetActive(gameOverText, true);
+    }
+
+    private static void SetText(Text text, string value)
+    {
+        if (text != null)
+        {
+            text.text = value;
+        }
     }
 
     private static void SetActive(Text text, bool isActive)

@@ -40,7 +40,6 @@ public class StageSelectButton : MonoBehaviour
         else
         {
             StageSelectionContext.SelectStage(stageData);
-            Debug.Log($"Selected stage: {stageData.StageName}");
         }
 
         SceneLoader.LoadScene(SceneLoader.GameSceneName);

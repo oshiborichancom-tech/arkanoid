@@ -117,7 +117,6 @@ public class GameManager : MonoBehaviour
     {
         int safeCount = Mathf.Max(0, blockCount);
         remainingBlocks += safeCount;
-        Debug.Log($"Registered {safeCount} blocks. Remaining blocks: {remainingBlocks}");
     }
 
     public void NotifyBallLaunched()
