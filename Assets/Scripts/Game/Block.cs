@@ -10,6 +10,13 @@ public class Block : MonoBehaviour
     [SerializeField] private ItemController itemPrefab;
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
     [SerializeField] private ItemEffectManager itemEffectManager;
+    [SerializeField] private bool spawnBreakEffect = true;
+    [SerializeField] private BlockBreakEffect breakEffectPrefab;
+    [SerializeField] private bool useBlockColorForBreakEffect = true;
+    [SerializeField] private Color breakEffectColor = new Color(1f, 1f, 1f, 0.85f);
+    [SerializeField] private float breakEffectDuration = 0.3f;
+    [SerializeField] private float breakEffectStartScale = 0.8f;
+    [SerializeField] private float breakEffectEndScale = 1.35f;
 
     private bool isBroken;
 
@@ -49,6 +56,7 @@ public class Block : MonoBehaviour
 
         isBroken = true;
 
+        SpawnBreakEffect();
         TryDropItem();
 
         if (countAsTarget && gameManager != null)
@@ -71,8 +79,66 @@ public class Block : MonoBehaviour
         item.gameObject.SetActive(true);
     }
 
+    private void SpawnBreakEffect()
+    {
+        if (!spawnBreakEffect)
+        {
+            return;
+        }
+
+        SpriteRenderer blockRenderer = GetComponent<SpriteRenderer>();
+        Color effectColor = GetBreakEffectColor(blockRenderer);
+        int sortingOrder = blockRenderer != null ? blockRenderer.sortingOrder + 7 : 12;
+
+        BlockBreakEffect effect = null;
+        if (breakEffectPrefab != null)
+        {
+            effect = Instantiate(breakEffectPrefab, transform.position, Quaternion.identity);
+        }
+        else
+        {
+            GameObject effectObject = new GameObject("BlockBreakEffect");
+            effectObject.transform.position = transform.position;
+            effectObject.AddComponent<SpriteRenderer>();
+            effect = effectObject.AddComponent<BlockBreakEffect>();
+        }
+
+        if (effect == null)
+        {
+            return;
+        }
+
+        effect.transform.localScale = transform.lossyScale;
+        effect.Configure(
+            effectColor,
+            breakEffectDuration,
+            breakEffectStartScale,
+            breakEffectEndScale,
+            sortingOrder);
+    }
+
+    private Color GetBreakEffectColor(SpriteRenderer blockRenderer)
+    {
+        if (!useBlockColorForBreakEffect || blockRenderer == null)
+        {
+            return breakEffectColor;
+        }
+
+        Color color = blockRenderer.color;
+        color.a = breakEffectColor.a;
+        return color;
+    }
+
     private static ItemType GetRandomItemType()
     {
         return DropItemTypes[Random.Range(0, DropItemTypes.Length)];
+    }
+
+    private void OnValidate()
+    {
+        itemDropChance = Mathf.Clamp01(itemDropChance);
+        breakEffectDuration = Mathf.Max(0.01f, breakEffectDuration);
+        breakEffectStartScale = Mathf.Max(0.01f, breakEffectStartScale);
+        breakEffectEndScale = Mathf.Max(breakEffectStartScale, breakEffectEndScale);
     }
 }
