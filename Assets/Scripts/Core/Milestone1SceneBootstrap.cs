@@ -16,6 +16,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const int DefaultInitialLives = 3;
     private const int DefaultAddBallsCount = 2;
     private const float DefaultAddBallSpeed = 7f;
+    private const int BackgroundSortingOrder = -20;
     private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
 
     private enum SceneKind
@@ -56,6 +57,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         public bool HasNextStage;
         public string StageName;
         public Sprite BackgroundSprite;
+        public BackgroundFitMode BackgroundFitMode;
+        public Vector2 BackgroundOffset;
+        public Vector2 BackgroundScaleMultiplier;
         public int BlockRows;
         public int BlockColumns;
         public float BlockSize;
@@ -120,6 +124,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             HasNextStage = true,
             StageName = string.IsNullOrWhiteSpace(stageName) ? DefaultStageName : stageName,
             BackgroundSprite = fallbackBackgroundSprite,
+            BackgroundFitMode = BackgroundFitMode.Stretch,
+            BackgroundOffset = Vector2.zero,
+            BackgroundScaleMultiplier = Vector2.one,
             BlockRows = blockRows > 0 ? blockRows : DefaultBlockRows,
             BlockColumns = blockColumns > 0 ? blockColumns : DefaultBlockColumns,
             BlockSize = blockSize > 0f ? blockSize : DefaultBlockSize,
@@ -148,6 +155,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         settings.StageId = effectiveStageData.StageId;
         settings.StageName = effectiveStageData.StageName;
         settings.BackgroundSprite = effectiveStageData.BackgroundSprite != null ? effectiveStageData.BackgroundSprite : settings.BackgroundSprite;
+        settings.BackgroundFitMode = effectiveStageData.BackgroundFitMode;
+        settings.BackgroundOffset = effectiveStageData.BackgroundOffset;
+        settings.BackgroundScaleMultiplier = effectiveStageData.BackgroundScaleMultiplier;
         settings.BlockRows = effectiveStageData.BlockRows;
         settings.BlockColumns = effectiveStageData.BlockColumns;
         settings.BlockSize = effectiveStageData.BlockSize;
@@ -379,7 +389,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             bounciness = 1f
         };
 
-        CreateBackground(settings.BackgroundSprite);
+        CreateBackground(settings);
         CreateWall("LeftWall", new Vector2(-8.95f, 0f), new Vector2(0.3f, 10.4f), bouncyMaterial);
         CreateWall("RightWall", new Vector2(8.95f, 0f), new Vector2(0.3f, 10.4f), bouncyMaterial);
         CreateWall("TopWall", new Vector2(0f, 5.1f), new Vector2(18.2f, 0.3f), bouncyMaterial);
@@ -449,13 +459,109 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return camera;
     }
 
-    private static void CreateBackground(Sprite stageBackgroundSprite)
+    private static void CreateBackground(StageRuntimeSettings settings)
     {
         GameObject background = new GameObject("Background");
-        background.transform.position = new Vector3(0f, 0f, 1f);
         SpriteRenderer renderer = background.AddComponent<SpriteRenderer>();
-        renderer.sprite = stageBackgroundSprite != null ? stageBackgroundSprite : backgroundSprite;
-        renderer.sortingOrder = -20;
+        bool hasStageBackground = settings.BackgroundSprite != null;
+        renderer.sprite = hasStageBackground ? settings.BackgroundSprite : backgroundSprite;
+        renderer.sortingOrder = BackgroundSortingOrder;
+
+        FitBackgroundToBlockGrid(background.transform, renderer, settings, hasStageBackground);
+    }
+
+    private static void FitBackgroundToBlockGrid(
+        Transform backgroundTransform,
+        SpriteRenderer renderer,
+        StageRuntimeSettings settings,
+        bool logAppliedBackground)
+    {
+        if (backgroundTransform == null)
+        {
+            return;
+        }
+
+        Vector2 gridSize = GetBlockGridSize(settings);
+        Vector2 gridCenter = GetBlockGridCenter(settings);
+        Vector2 backgroundPosition = gridCenter + settings.BackgroundOffset;
+        backgroundTransform.position = new Vector3(backgroundPosition.x, backgroundPosition.y, 1f);
+        backgroundTransform.localScale = Vector3.one;
+
+        if (renderer == null || renderer.sprite == null)
+        {
+            return;
+        }
+
+        Vector2 spriteSize = renderer.sprite.bounds.size;
+        if (spriteSize.x <= 0f || spriteSize.y <= 0f)
+        {
+            return;
+        }
+
+        Vector2 scale = CalculateBackgroundScale(gridSize, spriteSize, settings.BackgroundFitMode);
+        Vector2 scaleMultiplier = GetSafeBackgroundScaleMultiplier(settings.BackgroundScaleMultiplier);
+        Vector3 finalScale = new Vector3(
+            Mathf.Max(0.01f, scale.x * scaleMultiplier.x),
+            Mathf.Max(0.01f, scale.y * scaleMultiplier.y),
+            1f);
+        backgroundTransform.localScale = finalScale;
+
+        if (logAppliedBackground)
+        {
+            Debug.Log($"Background applied: sprite={renderer.sprite.name}, mode={settings.BackgroundFitMode}, gridSize={gridSize}, spriteSize={spriteSize}, scale={finalScale}, offset={settings.BackgroundOffset}");
+        }
+    }
+
+    private static Vector2 CalculateBackgroundScale(Vector2 gridSize, Vector2 spriteSize, BackgroundFitMode fitMode)
+    {
+        float scaleX = gridSize.x / spriteSize.x;
+        float scaleY = gridSize.y / spriteSize.y;
+
+        switch (fitMode)
+        {
+            case BackgroundFitMode.Fit:
+            {
+                float fitScale = Mathf.Min(scaleX, scaleY);
+                return new Vector2(fitScale, fitScale);
+            }
+            case BackgroundFitMode.Cover:
+            {
+                float coverScale = Mathf.Max(scaleX, scaleY);
+                return new Vector2(coverScale, coverScale);
+            }
+            case BackgroundFitMode.Stretch:
+                return new Vector2(scaleX, scaleY);
+            default:
+                return new Vector2(scaleX, scaleY);
+        }
+    }
+
+    private static Vector2 GetSafeBackgroundScaleMultiplier(Vector2 value)
+    {
+        return new Vector2(Mathf.Max(0.01f, value.x), Mathf.Max(0.01f, value.y));
+    }
+
+    private static Vector2 GetBlockGridSize(StageRuntimeSettings settings)
+    {
+        float safeBlockSize = Mathf.Max(0.1f, settings.BlockSize);
+        float safeSpacing = Mathf.Max(0f, settings.BlockSpacing);
+        int safeColumns = Mathf.Max(1, settings.BlockColumns);
+        int safeRows = Mathf.Max(1, settings.BlockRows);
+
+        float width = safeColumns * safeBlockSize + (safeColumns - 1) * safeSpacing;
+        float height = safeRows * safeBlockSize + (safeRows - 1) * safeSpacing;
+        return new Vector2(width, height);
+    }
+
+    private static Vector2 GetBlockGridCenter(StageRuntimeSettings settings)
+    {
+        float step = Mathf.Max(0.1f, settings.BlockSize) + Mathf.Max(0f, settings.BlockSpacing);
+        int safeColumns = Mathf.Max(1, settings.BlockColumns);
+        int safeRows = Mathf.Max(1, settings.BlockRows);
+
+        return settings.BlockStartPosition + new Vector2(
+            (safeColumns - 1) * step * 0.5f,
+            -(safeRows - 1) * step * 0.5f);
     }
 
     private static void CreateWall(string name, Vector2 position, Vector2 size, PhysicsMaterial2D material)

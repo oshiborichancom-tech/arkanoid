@@ -14,7 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stageId: 1
   stageName: Stage 1 from Select
-  backgroundSprite: {fileID: 0}
+  backgroundSprite: {fileID: 21300000, guid: 0f496a720ec83fd4e8d7d8096b063b2c, type: 3}
+  backgroundFitMode: 2
+  backgroundOffset: {x: 0, y: 0}
+  backgroundScaleMultiplier: {x: 1, y: 1}
   blockRows: 6
   blockColumns: 10
   blockSize: 0.6
