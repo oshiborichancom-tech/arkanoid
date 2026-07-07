@@ -3,6 +3,9 @@ using UnityEngine;
 [RequireComponent(typeof(Collider2D))]
 public class Block : MonoBehaviour
 {
+    private const string BorderObjectName = "Border";
+    private const int BorderSortingOrderOffset = -1;
+
     private static readonly ItemType[] DropItemTypes = (ItemType[])System.Enum.GetValues(typeof(ItemType));
 
     [SerializeField] private bool countAsTarget = true;
@@ -17,8 +20,17 @@ public class Block : MonoBehaviour
     [SerializeField] private float breakEffectDuration = 0.3f;
     [SerializeField] private float breakEffectStartScale = 0.8f;
     [SerializeField] private float breakEffectEndScale = 1.35f;
+    [SerializeField] private bool showBorder = true;
+    [SerializeField] private Color borderColor = new Color(0f, 0f, 0f, 0.65f);
+    [SerializeField] private float borderThickness = 0.04f;
+    [SerializeField] private SpriteRenderer borderRenderer;
 
     private bool isBroken;
+
+    private void Awake()
+    {
+        EnsureBorderVisual();
+    }
 
     private void Start()
     {
@@ -33,6 +45,8 @@ public class Block : MonoBehaviour
                 ? ItemEffectManager.Instance
                 : FindObjectOfType<ItemEffectManager>();
         }
+
+        EnsureBorderVisual();
     }
 
     public void Initialize(GameManager manager)
@@ -129,6 +143,79 @@ public class Block : MonoBehaviour
         return color;
     }
 
+    private void EnsureBorderVisual()
+    {
+        SpriteRenderer bodyRenderer = GetComponent<SpriteRenderer>();
+        if (bodyRenderer == null)
+        {
+            SetBorderVisible(false);
+            return;
+        }
+
+        if (!showBorder)
+        {
+            SetBorderVisible(false);
+            return;
+        }
+
+        if (borderRenderer == null)
+        {
+            borderRenderer = FindBorderRenderer();
+        }
+
+        if (borderRenderer == null)
+        {
+            borderRenderer = CreateBorderRenderer();
+        }
+
+        if (borderRenderer == null)
+        {
+            return;
+        }
+
+        Transform borderTransform = borderRenderer.transform;
+        borderTransform.SetParent(transform, false);
+        borderTransform.localPosition = Vector3.zero;
+        borderTransform.localRotation = Quaternion.identity;
+        float safeThickness = Mathf.Max(0f, borderThickness);
+        float borderScale = 1f + safeThickness * 2f;
+        borderTransform.localScale = new Vector3(borderScale, borderScale, 1f);
+
+        borderRenderer.sprite = bodyRenderer.sprite;
+        borderRenderer.color = borderColor;
+        borderRenderer.flipX = bodyRenderer.flipX;
+        borderRenderer.flipY = bodyRenderer.flipY;
+        borderRenderer.sortingLayerID = bodyRenderer.sortingLayerID;
+        borderRenderer.sortingOrder = bodyRenderer.sortingOrder + BorderSortingOrderOffset;
+        borderRenderer.enabled = true;
+    }
+
+    private SpriteRenderer FindBorderRenderer()
+    {
+        Transform borderTransform = transform.Find(BorderObjectName);
+        return borderTransform != null ? borderTransform.GetComponent<SpriteRenderer>() : null;
+    }
+
+    private SpriteRenderer CreateBorderRenderer()
+    {
+        GameObject borderObject = new GameObject(BorderObjectName);
+        borderObject.transform.SetParent(transform, false);
+        return borderObject.AddComponent<SpriteRenderer>();
+    }
+
+    private void SetBorderVisible(bool isVisible)
+    {
+        if (borderRenderer == null)
+        {
+            borderRenderer = FindBorderRenderer();
+        }
+
+        if (borderRenderer != null)
+        {
+            borderRenderer.enabled = isVisible;
+        }
+    }
+
     private static ItemType GetRandomItemType()
     {
         return DropItemTypes[Random.Range(0, DropItemTypes.Length)];
@@ -140,5 +227,12 @@ public class Block : MonoBehaviour
         breakEffectDuration = Mathf.Max(0.01f, breakEffectDuration);
         breakEffectStartScale = Mathf.Max(0.01f, breakEffectStartScale);
         breakEffectEndScale = Mathf.Max(breakEffectStartScale, breakEffectEndScale);
+        borderThickness = Mathf.Max(0f, borderThickness);
+
+        if (borderRenderer != null)
+        {
+            borderRenderer.color = borderColor;
+            borderRenderer.enabled = showBorder;
+        }
     }
 }
