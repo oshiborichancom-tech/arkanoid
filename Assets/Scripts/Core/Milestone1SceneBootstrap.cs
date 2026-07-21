@@ -465,8 +465,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         Text scoreText = CreateText(leftPanel, "ScoreText", "SCORE: 0", 28, Color.white,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
 
-        Text livesText = CreateText(leftPanel, "LivesText", $"LIFE: {settings.InitialLives}", 28, Color.white,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -292f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
+        Text livesText = CreateText(leftPanel, "LivesText", "LIFE\n-", 28, Color.white,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -292f), new Vector2(340f, 92f), new Vector2(0.5f, 1f));
 
         Button backButton = CreateButton(leftPanel, "BackToStageSelectButton", "Stage Select",
             new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 64f), new Vector2(0.5f, 0f));

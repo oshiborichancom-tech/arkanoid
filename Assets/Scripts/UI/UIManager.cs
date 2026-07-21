@@ -1,3 +1,5 @@
+using System;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,7 +14,10 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Text scoreText;
     [SerializeField] private Text clearText;
     [SerializeField] private Text gameOverText;
-    [SerializeField] private string livesFormat = "LIFE: {0}";
+    [SerializeField] private string livesFormat = "LIFE\n{0}";
+    [SerializeField] private string lifeHeartSymbol = "♥";
+    [SerializeField] private string lifeHeartSeparator = " ";
+    [SerializeField] private string emptyLivesSymbol = "-";
     [SerializeField] private string stageNameFormat = "STAGE: {0}";
     [SerializeField] private string scoreFormat = "SCORE: {0}";
 
@@ -34,7 +39,7 @@ public class UIManager : MonoBehaviour
     {
         if (livesText != null)
         {
-            livesText.text = string.Format(livesFormat, lives);
+            livesText.text = BuildLivesText(lives);
         }
     }
 
@@ -79,9 +84,22 @@ public class UIManager : MonoBehaviour
         int lives,
         string rank)
     {
+        ShowClear(unlockedNextStage, isFinalStage, 0, destroyedBlocks, totalBlocks, lives, rank);
+    }
+
+    public void ShowClear(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank)
+    {
         SetText(clearText, BuildClearMessage(
             unlockedNextStage,
             isFinalStage,
+            score,
             destroyedBlocks,
             totalBlocks,
             lives,
@@ -99,8 +117,13 @@ public class UIManager : MonoBehaviour
 
     public void ShowGameOver(int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
+        ShowGameOver(0, destroyedBlocks, totalBlocks, lives, rank);
+    }
+
+    public void ShowGameOver(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
+    {
         SetActive(clearText, false);
-        SetText(gameOverText, BuildGameOverMessage(destroyedBlocks, totalBlocks, lives, rank));
+        SetText(gameOverText, BuildGameOverMessage(score, destroyedBlocks, totalBlocks, lives, rank));
         SetActive(gameOverText, true);
     }
 
@@ -126,6 +149,49 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    private string BuildLivesText(int lives)
+    {
+        string hearts = BuildLifeHearts(lives);
+        if (string.IsNullOrEmpty(livesFormat))
+        {
+            return hearts;
+        }
+
+        try
+        {
+            return string.Format(livesFormat, hearts);
+        }
+        catch (FormatException)
+        {
+            return $"LIFE\n{hearts}";
+        }
+    }
+
+    private string BuildLifeHearts(int lives)
+    {
+        int safeLives = Mathf.Max(0, lives);
+        if (safeLives <= 0)
+        {
+            return string.IsNullOrEmpty(emptyLivesSymbol) ? "-" : emptyLivesSymbol;
+        }
+
+        string symbol = string.IsNullOrEmpty(lifeHeartSymbol) ? "*" : lifeHeartSymbol;
+        string separator = lifeHeartSeparator ?? string.Empty;
+        StringBuilder builder = new StringBuilder(symbol.Length * safeLives + separator.Length * Mathf.Max(0, safeLives - 1));
+
+        for (int i = 0; i < safeLives; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(separator);
+            }
+
+            builder.Append(symbol);
+        }
+
+        return builder.ToString();
+    }
+
     private static string BuildClearMessage(bool unlockedNextStage, bool isFinalStage)
     {
         if (isFinalStage)
@@ -149,22 +215,45 @@ public class UIManager : MonoBehaviour
         int lives,
         string rank)
     {
-        return $"CLEAR!\n{BuildResultLines(destroyedBlocks, totalBlocks, lives, rank)}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
+        return BuildClearMessage(unlockedNextStage, isFinalStage, 0, destroyedBlocks, totalBlocks, lives, rank);
+    }
+
+    private static string BuildClearMessage(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank)
+    {
+        return $"CLEAR!\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
     }
 
     private static string BuildGameOverMessage(int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
-        return $"GAME OVER\n{BuildResultLines(destroyedBlocks, totalBlocks, lives, rank)}\n\nPress R to retry\nor return to Stage Select.";
+        return BuildGameOverMessage(0, destroyedBlocks, totalBlocks, lives, rank);
+    }
+
+    private static string BuildGameOverMessage(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
+    {
+        return $"GAME OVER\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\nPress R to retry\nor return to Stage Select.";
     }
 
     private static string BuildResultLines(int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
+        return BuildResultLines(0, destroyedBlocks, totalBlocks, lives, rank);
+    }
+
+    private static string BuildResultLines(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
+    {
+        int safeScore = Mathf.Max(0, score);
         int safeTotalBlocks = Mathf.Max(0, totalBlocks);
         int safeDestroyedBlocks = Mathf.Clamp(destroyedBlocks, 0, Mathf.Max(safeTotalBlocks, destroyedBlocks));
         int safeLives = Mathf.Max(0, lives);
         string safeRank = string.IsNullOrWhiteSpace(rank) ? "-" : rank;
 
-        return $"Blocks: {safeDestroyedBlocks} / {safeTotalBlocks}\nLives: {safeLives}\nRank: {safeRank}";
+        return $"Score: {safeScore}\nBlocks: {safeDestroyedBlocks} / {safeTotalBlocks}\nLives: {safeLives}\nRank: {safeRank}";
     }
 
     private static string BuildClearActionMessage(bool unlockedNextStage, bool isFinalStage)

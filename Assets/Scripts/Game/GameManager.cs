@@ -26,11 +26,13 @@ public class GameManager : MonoBehaviour
     [SerializeField] private UIManager uiManager;
     [SerializeField] private bool hasNextStage = true;
     [SerializeField] private bool autoFindReferences = true;
+    [SerializeField] private int scorePerBlock = 100;
 
     private int lives;
     private int remainingBlocks;
     private int totalBlocks;
     private int destroyedBlocks;
+    private int currentScore;
     private readonly List<BallController> activeBalls = new List<BallController>();
 
     public GameState CurrentState { get; private set; }
@@ -61,7 +63,7 @@ public class GameManager : MonoBehaviour
         {
             uiManager.SetStageName(stageName);
             uiManager.SetLives(lives);
-            uiManager.SetScore(GetScoreValue());
+            uiManager.SetScore(currentScore);
             uiManager.ShowPlaying();
         }
 
@@ -161,10 +163,11 @@ public class GameManager : MonoBehaviour
 
         destroyedBlocks = Mathf.Min(GetSafeTotalBlocks(), destroyedBlocks + 1);
         remainingBlocks = Mathf.Max(0, remainingBlocks - 1);
+        AddScore(scorePerBlock);
 
         if (uiManager != null)
         {
-            uiManager.SetScore(GetScoreValue());
+            uiManager.SetScore(currentScore);
         }
 
         if (remainingBlocks <= 0)
@@ -350,6 +353,7 @@ public class GameManager : MonoBehaviour
             uiManager.ShowClear(
                 unlockedNextStage,
                 isFinalStage,
+                currentScore,
                 destroyedBlocks,
                 GetSafeTotalBlocks(),
                 lives,
@@ -367,6 +371,7 @@ public class GameManager : MonoBehaviour
         if (uiManager != null)
         {
             uiManager.ShowGameOver(
+                currentScore,
                 destroyedBlocks,
                 GetSafeTotalBlocks(),
                 lives,
@@ -379,6 +384,7 @@ public class GameManager : MonoBehaviour
         totalBlocks = 0;
         remainingBlocks = 0;
         destroyedBlocks = 0;
+        currentScore = 0;
     }
 
     private int GetSafeTotalBlocks()
@@ -423,9 +429,9 @@ public class GameManager : MonoBehaviour
         return "C";
     }
 
-    private int GetScoreValue()
+    private void AddScore(int amount)
     {
-        return Mathf.Max(0, destroyedBlocks) * 100;
+        currentScore = Mathf.Max(0, currentScore + Mathf.Max(0, amount));
     }
 
     private void FindMissingReferences()
@@ -574,6 +580,7 @@ public class GameManager : MonoBehaviour
     private void OnValidate()
     {
         stageId = Mathf.Max(1, stageId);
+        scorePerBlock = Mathf.Max(0, scorePerBlock);
         extraBallLaunchAngle = Mathf.Max(0f, extraBallLaunchAngle);
         extraBallSpeed = Mathf.Max(0.1f, extraBallSpeed);
     }
