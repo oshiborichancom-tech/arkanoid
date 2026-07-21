@@ -29,6 +29,8 @@ public class GameManager : MonoBehaviour
 
     private int lives;
     private int remainingBlocks;
+    private int totalBlocks;
+    private int destroyedBlocks;
     private readonly List<BallController> activeBalls = new List<BallController>();
 
     public GameState CurrentState { get; private set; }
@@ -59,6 +61,7 @@ public class GameManager : MonoBehaviour
         {
             uiManager.SetStageName(stageName);
             uiManager.SetLives(lives);
+            uiManager.SetScore(GetScoreValue());
             uiManager.ShowPlaying();
         }
 
@@ -103,6 +106,7 @@ public class GameManager : MonoBehaviour
         hasNextStage = stageHasNextStage;
         initialLives = Mathf.Max(1, livesCount);
         lives = initialLives;
+        ResetResultStats();
         CurrentState = GameState.ReadyToLaunch;
     }
 
@@ -123,6 +127,7 @@ public class GameManager : MonoBehaviour
     public void RegisterBlocks(int blockCount)
     {
         int safeCount = Mathf.Max(0, blockCount);
+        totalBlocks += safeCount;
         remainingBlocks += safeCount;
     }
 
@@ -154,7 +159,13 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        destroyedBlocks = Mathf.Min(GetSafeTotalBlocks(), destroyedBlocks + 1);
         remainingBlocks = Mathf.Max(0, remainingBlocks - 1);
+
+        if (uiManager != null)
+        {
+            uiManager.SetScore(GetScoreValue());
+        }
 
         if (remainingBlocks <= 0)
         {
@@ -336,7 +347,13 @@ public class GameManager : MonoBehaviour
 
         if (uiManager != null)
         {
-            uiManager.ShowClear(unlockedNextStage, isFinalStage);
+            uiManager.ShowClear(
+                unlockedNextStage,
+                isFinalStage,
+                destroyedBlocks,
+                GetSafeTotalBlocks(),
+                lives,
+                GetClearRank());
         }
     }
 
@@ -349,8 +366,66 @@ public class GameManager : MonoBehaviour
 
         if (uiManager != null)
         {
-            uiManager.ShowGameOver();
+            uiManager.ShowGameOver(
+                destroyedBlocks,
+                GetSafeTotalBlocks(),
+                lives,
+                GetGameOverRank());
         }
+    }
+
+    private void ResetResultStats()
+    {
+        totalBlocks = 0;
+        remainingBlocks = 0;
+        destroyedBlocks = 0;
+    }
+
+    private int GetSafeTotalBlocks()
+    {
+        return Mathf.Max(totalBlocks, destroyedBlocks);
+    }
+
+    private string GetClearRank()
+    {
+        if (lives >= 3)
+        {
+            return "S";
+        }
+
+        if (lives == 2)
+        {
+            return "A";
+        }
+
+        return "B";
+    }
+
+    private string GetGameOverRank()
+    {
+        int safeTotalBlocks = GetSafeTotalBlocks();
+        if (safeTotalBlocks <= 0)
+        {
+            return "C";
+        }
+
+        float destroyedRate = destroyedBlocks / (float)safeTotalBlocks;
+        if (destroyedRate >= 0.8f)
+        {
+            return "A";
+        }
+
+        if (destroyedRate >= 0.5f)
+        {
+            return "B";
+        }
+
+        return "C";
+    }
+
+    private int GetScoreValue()
+    {
+        return Mathf.Max(0, destroyedBlocks) * 100;
     }
 
     private void FindMissingReferences()

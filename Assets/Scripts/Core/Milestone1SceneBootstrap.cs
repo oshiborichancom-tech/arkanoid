@@ -18,6 +18,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const float DefaultAddBallSpeed = 7f;
     private const int BackgroundSortingOrder = -20;
     private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
+    private static readonly Vector2 DefaultPlayAreaCenter = Vector2.zero;
+    private static readonly Vector2 DefaultPlayAreaSize = new Vector2(10f, 9.6f);
 
     private enum SceneKind
     {
@@ -45,6 +47,13 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     [SerializeField] private int addBallsCount = DefaultAddBallsCount;
     [SerializeField] private float addBallLaunchAngle = 25f;
     [SerializeField] private float addBallSpeed = DefaultAddBallSpeed;
+    [SerializeField] private Vector2 playAreaCenter = DefaultPlayAreaCenter;
+    [SerializeField] private Vector2 playAreaSize = DefaultPlayAreaSize;
+    [SerializeField] private float playAreaWallThickness = 0.3f;
+    [SerializeField] private float ballLostPadding = 0.55f;
+    [SerializeField] private bool showPlayAreaDebugFrame = true;
+    [SerializeField] private Color playAreaDebugFrameColor = new Color(0.78f, 0.88f, 1f, 0.34f);
+    [SerializeField] private float playAreaDebugFrameThickness = 0.035f;
 
     private static Sprite squareSprite;
     private static Sprite ballSprite;
@@ -74,6 +83,13 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         public int AddBallsCount;
         public float AddBallLaunchAngle;
         public float AddBallSpeed;
+        public Vector2 PlayAreaCenter;
+        public Vector2 PlayAreaSize;
+        public float PlayAreaWallThickness;
+        public float BallLostPadding;
+        public bool ShowPlayAreaDebugFrame;
+        public Color PlayAreaDebugFrameColor;
+        public float PlayAreaDebugFrameThickness;
     }
 
     private void Awake()
@@ -114,6 +130,12 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         addBallsCount = addBallsCount > 0 ? addBallsCount : DefaultAddBallsCount;
         addBallLaunchAngle = Mathf.Max(0f, addBallLaunchAngle);
         addBallSpeed = addBallSpeed > 0f ? addBallSpeed : DefaultAddBallSpeed;
+        playAreaSize = new Vector2(
+            Mathf.Max(1f, playAreaSize.x),
+            Mathf.Max(1f, playAreaSize.y));
+        playAreaWallThickness = Mathf.Max(0.05f, playAreaWallThickness);
+        ballLostPadding = Mathf.Max(0f, ballLostPadding);
+        playAreaDebugFrameThickness = Mathf.Max(0.005f, playAreaDebugFrameThickness);
     }
 
     private StageRuntimeSettings CreateStageSettings()
@@ -140,7 +162,14 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             PaddleExpandDuration = Mathf.Max(0f, paddleExpandDuration),
             AddBallsCount = addBallsCount > 0 ? addBallsCount : DefaultAddBallsCount,
             AddBallLaunchAngle = Mathf.Max(0f, addBallLaunchAngle),
-            AddBallSpeed = addBallSpeed > 0f ? addBallSpeed : DefaultAddBallSpeed
+            AddBallSpeed = addBallSpeed > 0f ? addBallSpeed : DefaultAddBallSpeed,
+            PlayAreaCenter = playAreaCenter,
+            PlayAreaSize = GetSafePlayAreaSize(playAreaSize),
+            PlayAreaWallThickness = Mathf.Max(0.05f, playAreaWallThickness),
+            BallLostPadding = Mathf.Max(0f, ballLostPadding),
+            ShowPlayAreaDebugFrame = showPlayAreaDebugFrame,
+            PlayAreaDebugFrameColor = playAreaDebugFrameColor,
+            PlayAreaDebugFrameThickness = Mathf.Max(0.005f, playAreaDebugFrameThickness)
         };
 
         StageData effectiveStageData = StageSelectionContext.SelectedStageData != null
@@ -389,14 +418,15 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             bounciness = 1f
         };
 
-        CreateBackground(settings);
-        CreateWall("LeftWall", new Vector2(-8.95f, 0f), new Vector2(0.3f, 10.4f), bouncyMaterial);
-        CreateWall("RightWall", new Vector2(8.95f, 0f), new Vector2(0.3f, 10.4f), bouncyMaterial);
-        CreateWall("TopWall", new Vector2(0f, 5.1f), new Vector2(18.2f, 0.3f), bouncyMaterial);
+        Rect playAreaBounds = GetPlayAreaBounds(settings);
+
+        CreateBackground(settings, playAreaBounds);
+        CreatePlayAreaWalls(playAreaBounds, settings.PlayAreaWallThickness, bouncyMaterial);
+        CreatePlayAreaDebugFrame(playAreaBounds, settings);
 
         GameManager gameManager = new GameObject("GameManager").AddComponent<GameManager>();
         ItemEffectManager itemEffectManager = new GameObject("ItemEffectManager").AddComponent<ItemEffectManager>();
-        GameObject paddle = CreatePaddle(camera, bouncyMaterial, settings.PaddleSpeed);
+        GameObject paddle = CreatePaddle(camera, bouncyMaterial, settings.PaddleSpeed, playAreaBounds);
         PaddleController paddleController = paddle.GetComponent<PaddleController>();
         itemEffectManager.Configure(
             paddleController,
@@ -405,33 +435,43 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             settings.PaddleExpandDuration,
             settings.AddBallsCount);
         GameObject ballsParent = new GameObject("Balls");
-        GameObject ball = CreateBall(paddle.transform, gameManager, bouncyMaterial, settings.BallSpeed);
+        GameObject ball = CreateBall(paddle.transform, gameManager, bouncyMaterial, settings.BallSpeed, playAreaBounds, settings.BallLostPadding);
         ball.transform.SetParent(ballsParent.transform);
 
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
         SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
 
-        Text livesText = CreateText(canvas.transform, "LivesText", $"Lives: {settings.InitialLives}", 34, Color.white,
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -24f), new Vector2(320f, 60f), new Vector2(0f, 1f), TextAnchor.MiddleLeft);
+        CreateGameHudLayout(canvas.transform, out RectTransform leftPanel, out _, out RectTransform rightPanel);
 
-        Text stageNameText = CreateText(canvas.transform, "StageNameText", settings.StageName, 34, Color.white,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(420f, 60f), new Vector2(0.5f, 1f), TextAnchor.MiddleCenter);
+        CreateText(leftPanel, "StatusTitleText", "STATUS", 34, new Color(0.94f, 0.97f, 1f, 1f),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
 
-        Button backButton = CreateButton(canvas.transform, "BackToStageSelectButton", "Stage Select",
-            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -24f), new Vector2(260f, 64f), new Vector2(1f, 1f));
+        Text stageNameText = CreateText(leftPanel, "StageNameText", $"STAGE: {settings.StageName}", 28, Color.white,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -120f), new Vector2(340f, 70f), new Vector2(0.5f, 1f));
+
+        Text scoreText = CreateText(leftPanel, "ScoreText", "SCORE: 0", 28, Color.white,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
+
+        Text livesText = CreateText(leftPanel, "LivesText", $"LIFE: {settings.InitialLives}", 28, Color.white,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -292f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
+
+        Button backButton = CreateButton(leftPanel, "BackToStageSelectButton", "Stage Select",
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 64f), new Vector2(0.5f, 0f));
         backButton.onClick.AddListener(loader.LoadStageSelect);
 
-        Text clearText = CreateText(canvas.transform, "ClearText", UIManager.ClearMessage, 42, new Color(0.98f, 0.92f, 0.30f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(980f, 260f));
+        CreateIconPanelContents(rightPanel);
+
+        Text clearText = CreateText(canvas.transform, "ClearText", UIManager.ClearMessage, 36, new Color(0.98f, 0.92f, 0.30f, 1f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1080f, 420f));
         clearText.gameObject.SetActive(false);
 
-        Text gameOverText = CreateText(canvas.transform, "GameOverText", UIManager.GameOverMessage, 42, new Color(1f, 0.42f, 0.42f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(980f, 260f));
+        Text gameOverText = CreateText(canvas.transform, "GameOverText", UIManager.GameOverMessage, 36, new Color(1f, 0.42f, 0.42f, 1f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1080f, 420f));
         gameOverText.gameObject.SetActive(false);
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
-        uiManager.Configure(livesText, stageNameText, clearText, gameOverText);
+        uiManager.Configure(livesText, stageNameText, scoreText, clearText, gameOverText);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
         gameManager.ConfigureBallSpawning(
             ball.GetComponent<BallController>(),
@@ -440,7 +480,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             settings.AddBallLaunchAngle,
             settings.AddBallSpeed);
 
-        CreateBlockGrid(gameManager, bouncyMaterial, itemEffectManager, settings);
+        CreateBlockGrid(gameManager, bouncyMaterial, itemEffectManager, settings, playAreaBounds);
     }
 
     private static Camera CreateCamera(Color backgroundColor)
@@ -459,7 +499,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return camera;
     }
 
-    private static void CreateBackground(StageRuntimeSettings settings)
+    private static void CreateBackground(StageRuntimeSettings settings, Rect playAreaBounds)
     {
         GameObject background = new GameObject("Background");
         SpriteRenderer renderer = background.AddComponent<SpriteRenderer>();
@@ -467,13 +507,14 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         renderer.sprite = hasStageBackground ? settings.BackgroundSprite : backgroundSprite;
         renderer.sortingOrder = BackgroundSortingOrder;
 
-        FitBackgroundToBlockGrid(background.transform, renderer, settings, hasStageBackground);
+        FitBackgroundToPlayArea(background.transform, renderer, settings, playAreaBounds, hasStageBackground);
     }
 
-    private static void FitBackgroundToBlockGrid(
+    private static void FitBackgroundToPlayArea(
         Transform backgroundTransform,
         SpriteRenderer renderer,
         StageRuntimeSettings settings,
+        Rect playAreaBounds,
         bool logAppliedBackground)
     {
         if (backgroundTransform == null)
@@ -481,9 +522,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             return;
         }
 
-        Vector2 gridSize = GetBlockGridSize(settings);
-        Vector2 gridCenter = GetBlockGridCenter(settings);
-        Vector2 backgroundPosition = gridCenter + settings.BackgroundOffset;
+        Vector2 targetSize = playAreaBounds.size;
+        Vector2 backgroundPosition = playAreaBounds.center + settings.BackgroundOffset;
         backgroundTransform.position = new Vector3(backgroundPosition.x, backgroundPosition.y, 1f);
         backgroundTransform.localScale = Vector3.one;
 
@@ -498,7 +538,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             return;
         }
 
-        Vector2 scale = CalculateBackgroundScale(gridSize, spriteSize, settings.BackgroundFitMode);
+        Vector2 scale = CalculateBackgroundScale(targetSize, spriteSize, settings.BackgroundFitMode);
         Vector2 scaleMultiplier = GetSafeBackgroundScaleMultiplier(settings.BackgroundScaleMultiplier);
         Vector3 finalScale = new Vector3(
             Mathf.Max(0.01f, scale.x * scaleMultiplier.x),
@@ -508,7 +548,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         if (logAppliedBackground)
         {
-            Debug.Log($"Background applied: sprite={renderer.sprite.name}, mode={settings.BackgroundFitMode}, gridSize={gridSize}, spriteSize={spriteSize}, scale={finalScale}, offset={settings.BackgroundOffset}");
+            Debug.Log($"Background applied: sprite={renderer.sprite.name}, mode={settings.BackgroundFitMode}, playAreaSize={targetSize}, spriteSize={spriteSize}, scale={finalScale}, offset={settings.BackgroundOffset}");
         }
     }
 
@@ -541,6 +581,17 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return new Vector2(Mathf.Max(0.01f, value.x), Mathf.Max(0.01f, value.y));
     }
 
+    private static Vector2 GetSafePlayAreaSize(Vector2 size)
+    {
+        return new Vector2(Mathf.Max(1f, size.x), Mathf.Max(1f, size.y));
+    }
+
+    private static Rect GetPlayAreaBounds(StageRuntimeSettings settings)
+    {
+        Vector2 safeSize = GetSafePlayAreaSize(settings.PlayAreaSize);
+        return new Rect(settings.PlayAreaCenter - safeSize * 0.5f, safeSize);
+    }
+
     private static Vector2 GetBlockGridSize(StageRuntimeSettings settings)
     {
         float safeBlockSize = Mathf.Max(0.1f, settings.BlockSize);
@@ -564,6 +615,93 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             -(safeRows - 1) * step * 0.5f);
     }
 
+    private static Vector2 GetBlockStartPositionWithinPlayArea(StageRuntimeSettings settings, Rect playAreaBounds)
+    {
+        Vector2 gridSize = GetBlockGridSize(settings);
+        Vector2 gridCenter = GetBlockGridCenter(settings);
+        Vector2 clampedCenter = gridCenter;
+
+        float minCenterX = playAreaBounds.xMin + gridSize.x * 0.5f;
+        float maxCenterX = playAreaBounds.xMax - gridSize.x * 0.5f;
+        clampedCenter.x = minCenterX <= maxCenterX
+            ? Mathf.Clamp(gridCenter.x, minCenterX, maxCenterX)
+            : playAreaBounds.center.x;
+
+        float minCenterY = playAreaBounds.yMin + gridSize.y * 0.5f;
+        float maxCenterY = playAreaBounds.yMax - gridSize.y * 0.5f;
+        clampedCenter.y = minCenterY <= maxCenterY
+            ? Mathf.Clamp(gridCenter.y, minCenterY, maxCenterY)
+            : playAreaBounds.center.y;
+
+        float step = Mathf.Max(0.1f, settings.BlockSize) + Mathf.Max(0f, settings.BlockSpacing);
+        int safeColumns = Mathf.Max(1, settings.BlockColumns);
+        int safeRows = Mathf.Max(1, settings.BlockRows);
+
+        return clampedCenter - new Vector2(
+            (safeColumns - 1) * step * 0.5f,
+            -(safeRows - 1) * step * 0.5f);
+    }
+
+    private static void CreatePlayAreaWalls(Rect playAreaBounds, float wallThickness, PhysicsMaterial2D material)
+    {
+        float safeThickness = Mathf.Max(0.05f, wallThickness);
+        float halfThickness = safeThickness * 0.5f;
+
+        CreateWall("LeftWall",
+            new Vector2(playAreaBounds.xMin - halfThickness, playAreaBounds.center.y),
+            new Vector2(safeThickness, playAreaBounds.height + safeThickness * 2f),
+            material);
+        CreateWall("RightWall",
+            new Vector2(playAreaBounds.xMax + halfThickness, playAreaBounds.center.y),
+            new Vector2(safeThickness, playAreaBounds.height + safeThickness * 2f),
+            material);
+        CreateWall("TopWall",
+            new Vector2(playAreaBounds.center.x, playAreaBounds.yMax + halfThickness),
+            new Vector2(playAreaBounds.width + safeThickness * 2f, safeThickness),
+            material);
+    }
+
+    private static void CreatePlayAreaDebugFrame(Rect playAreaBounds, StageRuntimeSettings settings)
+    {
+        if (!settings.ShowPlayAreaDebugFrame)
+        {
+            return;
+        }
+
+        float safeThickness = Mathf.Max(0.005f, settings.PlayAreaDebugFrameThickness);
+        GameObject frameParent = new GameObject("PlayAreaDebugFrame");
+
+        CreateDebugFrameLine(frameParent.transform, "Top",
+            new Vector2(playAreaBounds.center.x, playAreaBounds.yMax),
+            new Vector2(playAreaBounds.width, safeThickness),
+            settings.PlayAreaDebugFrameColor);
+        CreateDebugFrameLine(frameParent.transform, "Bottom",
+            new Vector2(playAreaBounds.center.x, playAreaBounds.yMin),
+            new Vector2(playAreaBounds.width, safeThickness),
+            settings.PlayAreaDebugFrameColor);
+        CreateDebugFrameLine(frameParent.transform, "Left",
+            new Vector2(playAreaBounds.xMin, playAreaBounds.center.y),
+            new Vector2(safeThickness, playAreaBounds.height),
+            settings.PlayAreaDebugFrameColor);
+        CreateDebugFrameLine(frameParent.transform, "Right",
+            new Vector2(playAreaBounds.xMax, playAreaBounds.center.y),
+            new Vector2(safeThickness, playAreaBounds.height),
+            settings.PlayAreaDebugFrameColor);
+    }
+
+    private static void CreateDebugFrameLine(Transform parent, string name, Vector2 position, Vector2 size, Color color)
+    {
+        GameObject line = new GameObject(name);
+        line.transform.SetParent(parent, false);
+        line.transform.position = position;
+        line.transform.localScale = new Vector3(size.x, size.y, 1f);
+
+        SpriteRenderer renderer = line.AddComponent<SpriteRenderer>();
+        renderer.sprite = squareSprite;
+        renderer.color = color;
+        renderer.sortingOrder = 25;
+    }
+
     private static void CreateWall(string name, Vector2 position, Vector2 size, PhysicsMaterial2D material)
     {
         GameObject wall = new GameObject(name);
@@ -580,10 +718,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         collider.sharedMaterial = material;
     }
 
-    private static GameObject CreatePaddle(Camera camera, PhysicsMaterial2D material, float speed)
+    private static GameObject CreatePaddle(Camera camera, PhysicsMaterial2D material, float speed, Rect playAreaBounds)
     {
         GameObject paddle = new GameObject("Paddle");
-        paddle.transform.position = new Vector3(0f, -4.15f, 0f);
+        paddle.transform.position = new Vector3(playAreaBounds.center.x, playAreaBounds.yMin + 0.85f, 0f);
         paddle.transform.localScale = new Vector3(2.2f, 0.32f, 1f);
 
         SpriteRenderer renderer = paddle.AddComponent<SpriteRenderer>();
@@ -602,13 +740,14 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         PaddleController controller = paddle.AddComponent<PaddleController>();
         controller.Configure(camera, speed);
+        controller.ConfigurePlayArea(playAreaBounds.xMin, playAreaBounds.xMax);
         return paddle;
     }
 
-    private static GameObject CreateBall(Transform paddle, GameManager gameManager, PhysicsMaterial2D material, float speed)
+    private static GameObject CreateBall(Transform paddle, GameManager gameManager, PhysicsMaterial2D material, float speed, Rect playAreaBounds, float lostPadding)
     {
         GameObject ball = new GameObject("Ball");
-        ball.transform.position = new Vector3(0f, -3.7f, 0f);
+        ball.transform.position = new Vector3(playAreaBounds.center.x, playAreaBounds.yMin + 1.3f, 0f);
         ball.transform.localScale = new Vector3(0.34f, 0.34f, 1f);
 
         SpriteRenderer renderer = ball.AddComponent<SpriteRenderer>();
@@ -627,6 +766,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         BallController controller = ball.AddComponent<BallController>();
         controller.Configure(paddle, gameManager);
+        controller.ConfigurePlayArea(playAreaBounds, lostPadding);
         controller.SetMoveSpeed(speed);
         return ball;
     }
@@ -635,7 +775,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         GameManager gameManager,
         PhysicsMaterial2D material,
         ItemEffectManager itemEffectManager,
-        StageRuntimeSettings settings)
+        StageRuntimeSettings settings,
+        Rect playAreaBounds)
     {
         float safeDropChance = Mathf.Clamp01(settings.ItemDropChance);
         GameObject runtimePrefabs = new GameObject("RuntimePrefabs");
@@ -659,6 +800,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         GameObject blocksParent = new GameObject("Blocks");
 
         BlockGridBuilder builder = new GameObject("BlockGridBuilder").AddComponent<BlockGridBuilder>();
+        Vector2 adjustedBlockStartPosition = GetBlockStartPositionWithinPlayArea(settings, playAreaBounds);
+
         builder.Configure(
             block,
             gameManager,
@@ -667,7 +810,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             settings.BlockColumns,
             settings.BlockSize,
             settings.BlockSpacing,
-            settings.BlockStartPosition);
+            adjustedBlockStartPosition);
         builder.ConfigureItemDrops(itemPrefab, safeDropChance, itemEffectManager);
     }
 
@@ -734,6 +877,90 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         }
 
         return textMesh;
+    }
+
+    private static void CreateGameHudLayout(
+        Transform canvasTransform,
+        out RectTransform leftPanel,
+        out RectTransform centerPanel,
+        out RectTransform rightPanel)
+    {
+        leftPanel = CreatePanel(canvasTransform, "LeftStatusPanel",
+            new Vector2(0f, 0f), new Vector2(0.22f, 1f), new Color(0.02f, 0.04f, 0.07f, 0.72f));
+        centerPanel = CreatePanel(canvasTransform, "CenterGamePanel",
+            new Vector2(0.22f, 0f), new Vector2(0.78f, 1f), new Color(1f, 1f, 1f, 0.018f));
+        rightPanel = CreatePanel(canvasTransform, "RightIconPanel",
+            new Vector2(0.78f, 0f), new Vector2(1f, 1f), new Color(0.02f, 0.04f, 0.07f, 0.62f));
+
+        Color borderColor = new Color(0.78f, 0.88f, 1f, 0.26f);
+        CreatePanelBorder(leftPanel, "LeftStatusPanelBorder", borderColor, 2f);
+        CreatePanelBorder(centerPanel, "CenterGamePanelBorder", new Color(0.78f, 0.88f, 1f, 0.20f), 2f);
+        CreatePanelBorder(rightPanel, "RightIconPanelBorder", borderColor, 2f);
+    }
+
+    private static void CreateIconPanelContents(Transform rightPanel)
+    {
+        CreateText(rightPanel, "IconTitleText", "ICON", 34, new Color(0.94f, 0.97f, 1f, 1f),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(300f, 58f), new Vector2(0.5f, 1f));
+
+        CreateIconSlot(rightPanel, "IconSlot_1", -130f);
+        CreateIconSlot(rightPanel, "IconSlot_2", -250f);
+        CreateIconSlot(rightPanel, "IconSlot_3", -370f);
+    }
+
+    private static void CreateIconSlot(Transform parent, string name, float topOffset)
+    {
+        RectTransform slot = CreatePanel(parent, name,
+            new Vector2(0.5f, 1f),
+            new Vector2(0.5f, 1f),
+            new Color(1f, 1f, 1f, 0.035f),
+            new Vector2(0f, topOffset),
+            new Vector2(92f, 92f),
+            new Vector2(0.5f, 1f));
+        CreatePanelBorder(slot, $"{name}_Border", new Color(0.86f, 0.93f, 1f, 0.45f), 2f);
+        CreateText(slot, $"{name}_Text", "-", 42, new Color(0.86f, 0.93f, 1f, 0.7f),
+            new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
+    }
+
+    private static RectTransform CreatePanel(
+        Transform parent,
+        string name,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        Color color,
+        Vector2? anchoredPosition = null,
+        Vector2? sizeDelta = null,
+        Vector2? pivot = null)
+    {
+        GameObject panelObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        panelObject.transform.SetParent(parent, false);
+
+        RectTransform rectTransform = panelObject.GetComponent<RectTransform>();
+        rectTransform.anchorMin = anchorMin;
+        rectTransform.anchorMax = anchorMax;
+        rectTransform.pivot = pivot ?? new Vector2(0.5f, 0.5f);
+        rectTransform.anchoredPosition = anchoredPosition ?? Vector2.zero;
+        rectTransform.sizeDelta = sizeDelta ?? Vector2.zero;
+
+        Image image = panelObject.GetComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+
+        return rectTransform;
+    }
+
+    private static void CreatePanelBorder(RectTransform parent, string name, Color color, float thickness)
+    {
+        float safeThickness = Mathf.Max(1f, thickness);
+
+        CreatePanel(parent, $"{name}_Top", new Vector2(0f, 1f), new Vector2(1f, 1f), color,
+            Vector2.zero, new Vector2(0f, safeThickness), new Vector2(0.5f, 1f));
+        CreatePanel(parent, $"{name}_Bottom", new Vector2(0f, 0f), new Vector2(1f, 0f), color,
+            Vector2.zero, new Vector2(0f, safeThickness), new Vector2(0.5f, 0f));
+        CreatePanel(parent, $"{name}_Left", new Vector2(0f, 0f), new Vector2(0f, 1f), color,
+            Vector2.zero, new Vector2(safeThickness, 0f), new Vector2(0f, 0.5f));
+        CreatePanel(parent, $"{name}_Right", new Vector2(1f, 0f), new Vector2(1f, 1f), color,
+            Vector2.zero, new Vector2(safeThickness, 0f), new Vector2(1f, 0.5f));
     }
 
     private static Canvas CreateCanvas()

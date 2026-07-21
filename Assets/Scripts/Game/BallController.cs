@@ -130,6 +130,11 @@ public class BallController : MonoBehaviour
         gameManager = manager;
     }
 
+    public void ConfigurePlayArea(Rect playAreaBounds, float bottomLostPadding)
+    {
+        lostY = playAreaBounds.yMin - Mathf.Max(0f, bottomLostPadding);
+    }
+
     public void SetMoveSpeed(float speed)
     {
         moveSpeed = Mathf.Max(0.1f, speed);

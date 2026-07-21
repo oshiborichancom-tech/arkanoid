@@ -7,6 +7,8 @@ public class PaddleController : MonoBehaviour
     [SerializeField] private float moveSpeed = 9f;
     [SerializeField] private float screenPadding = 0.25f;
     [SerializeField] private Camera targetCamera;
+    [SerializeField] private bool usePlayAreaBounds;
+    [SerializeField] private Vector2 playAreaXLimits = new Vector2(-8f, 8f);
 
     private Rigidbody2D paddleRigidbody;
     private Collider2D paddleCollider;
@@ -90,6 +92,13 @@ public class PaddleController : MonoBehaviour
     {
         targetCamera = camera;
         moveSpeed = speed;
+    }
+
+    public void ConfigurePlayArea(float minX, float maxX)
+    {
+        playAreaXLimits = new Vector2(Mathf.Min(minX, maxX), Mathf.Max(minX, maxX));
+        usePlayAreaBounds = true;
+        ClampCurrentPositionToScreen();
     }
 
     public void ApplyTemporaryExpand(float scaleMultiplier, float duration)
@@ -180,6 +189,11 @@ public class PaddleController : MonoBehaviour
 
     private float GetMinX()
     {
+        if (usePlayAreaBounds)
+        {
+            return playAreaXLimits.x + GetHalfWidth() + screenPadding;
+        }
+
         if (targetCamera == null)
         {
             return -8f;
@@ -190,6 +204,11 @@ public class PaddleController : MonoBehaviour
 
     private float GetMaxX()
     {
+        if (usePlayAreaBounds)
+        {
+            return playAreaXLimits.y - GetHalfWidth() - screenPadding;
+        }
+
         if (targetCamera == null)
         {
             return 8f;
