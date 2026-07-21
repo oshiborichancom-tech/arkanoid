@@ -43,6 +43,12 @@ public class StageData : ScriptableObject
     [SerializeField, Min(0.1f)] private float paddleSpeed = 9f;
     [SerializeField, Min(1)] private int initialLives = 3;
 
+    [Header("Icons")]
+    [SerializeField] private string icon1Label = "C";
+    [SerializeField] private string icon2Label = "L";
+    [SerializeField] private string icon3Label = "S";
+    [SerializeField, Min(0)] private int iconScoreTarget = 3000;
+
     [Header("Items")]
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
     [SerializeField, Min(1f)] private float paddleExpandMultiplier = 1.5f;
@@ -69,6 +75,10 @@ public class StageData : ScriptableObject
     public float BallSpeed => Mathf.Max(0.1f, ballSpeed);
     public float PaddleSpeed => Mathf.Max(0.1f, paddleSpeed);
     public int InitialLives => Mathf.Max(1, initialLives);
+    public string Icon1Label => GetSafeIconLabel(icon1Label, "C");
+    public string Icon2Label => GetSafeIconLabel(icon2Label, "L");
+    public string Icon3Label => GetSafeIconLabel(icon3Label, "S");
+    public int IconScoreTarget => Mathf.Max(0, iconScoreTarget);
     public float ItemDropChance => Mathf.Clamp01(itemDropChance);
     public float PaddleExpandMultiplier => Mathf.Max(1f, paddleExpandMultiplier);
     public float PaddleExpandDuration => Mathf.Max(0f, paddleExpandDuration);
@@ -92,6 +102,10 @@ public class StageData : ScriptableObject
         ballSpeed = Mathf.Max(0.1f, ballSpeed);
         paddleSpeed = Mathf.Max(0.1f, paddleSpeed);
         initialLives = Mathf.Max(1, initialLives);
+        icon1Label = GetSafeIconLabel(icon1Label, "C");
+        icon2Label = GetSafeIconLabel(icon2Label, "L");
+        icon3Label = GetSafeIconLabel(icon3Label, "S");
+        iconScoreTarget = Mathf.Max(0, iconScoreTarget);
         itemDropChance = Mathf.Clamp01(itemDropChance);
         paddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier);
         paddleExpandDuration = Mathf.Max(0f, paddleExpandDuration);
@@ -103,5 +117,10 @@ public class StageData : ScriptableObject
     private static Vector2 GetSafeScaleMultiplier(Vector2 value)
     {
         return new Vector2(Mathf.Max(0.01f, value.x), Mathf.Max(0.01f, value.y));
+    }
+
+    private static string GetSafeIconLabel(string label, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(label) ? fallback : label.Trim();
     }
 }

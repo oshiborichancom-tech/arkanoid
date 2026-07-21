@@ -16,6 +16,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const int DefaultInitialLives = 3;
     private const int DefaultAddBallsCount = 2;
     private const float DefaultAddBallSpeed = 7f;
+    private const string DefaultIcon1Label = "C";
+    private const string DefaultIcon2Label = "L";
+    private const string DefaultIcon3Label = "S";
+    private const int DefaultIconScoreTarget = 3000;
     private const int BackgroundSortingOrder = -20;
     private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
     private static readonly Vector2 DefaultPlayAreaCenter = Vector2.zero;
@@ -81,6 +85,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         public float BallSpeed;
         public float PaddleSpeed;
         public int InitialLives;
+        public string Icon1Label;
+        public string Icon2Label;
+        public string Icon3Label;
+        public int IconScoreTarget;
         public float ItemDropChance;
         public float PaddleExpandMultiplier;
         public float PaddleExpandDuration;
@@ -165,6 +173,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             BallSpeed = ballSpeed > 0f ? ballSpeed : DefaultBallSpeed,
             PaddleSpeed = paddleSpeed > 0f ? paddleSpeed : DefaultPaddleSpeed,
             InitialLives = initialLives > 0 ? initialLives : DefaultInitialLives,
+            Icon1Label = DefaultIcon1Label,
+            Icon2Label = DefaultIcon2Label,
+            Icon3Label = DefaultIcon3Label,
+            IconScoreTarget = DefaultIconScoreTarget,
             ItemDropChance = Mathf.Clamp01(itemDropChance),
             PaddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier),
             PaddleExpandDuration = Mathf.Max(0f, paddleExpandDuration),
@@ -207,6 +219,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         settings.BallSpeed = effectiveStageData.BallSpeed;
         settings.PaddleSpeed = effectiveStageData.PaddleSpeed;
         settings.InitialLives = effectiveStageData.InitialLives;
+        settings.Icon1Label = effectiveStageData.Icon1Label;
+        settings.Icon2Label = effectiveStageData.Icon2Label;
+        settings.Icon3Label = effectiveStageData.Icon3Label;
+        settings.IconScoreTarget = effectiveStageData.IconScoreTarget;
         settings.ItemDropChance = effectiveStageData.ItemDropChance;
         settings.PaddleExpandMultiplier = effectiveStageData.PaddleExpandMultiplier;
         settings.PaddleExpandDuration = effectiveStageData.PaddleExpandDuration;
@@ -472,7 +488,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 64f), new Vector2(0.5f, 0f));
         backButton.onClick.AddListener(loader.LoadStageSelect);
 
-        CreateIconPanelContents(rightPanel);
+        CreateIconPanelContents(rightPanel, out Text icon1Text, out Text icon2Text, out Text icon3Text);
 
         Text clearText = CreateText(canvas.transform, "ClearText", UIManager.ClearMessage, 36, new Color(0.98f, 0.92f, 0.30f, 1f),
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1080f, 420f));
@@ -483,8 +499,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         gameOverText.gameObject.SetActive(false);
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
-        uiManager.Configure(livesText, stageNameText, scoreText, clearText, gameOverText);
+        uiManager.Configure(livesText, stageNameText, scoreText, clearText, gameOverText, icon1Text, icon2Text, icon3Text);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
+        gameManager.ConfigureStageIcons(settings.Icon1Label, settings.Icon2Label, settings.Icon3Label, settings.IconScoreTarget);
         gameManager.ConfigureBallSpawning(
             ball.GetComponent<BallController>(),
             paddle.transform,
@@ -954,17 +971,17 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         CreatePanelBorder(rightPanel, "RightIconPanelBorder", borderColor, 2f);
     }
 
-    private static void CreateIconPanelContents(Transform rightPanel)
+    private static void CreateIconPanelContents(Transform rightPanel, out Text icon1Text, out Text icon2Text, out Text icon3Text)
     {
         CreateText(rightPanel, "IconTitleText", "ICON", 34, new Color(0.94f, 0.97f, 1f, 1f),
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(300f, 58f), new Vector2(0.5f, 1f));
 
-        CreateIconSlot(rightPanel, "IconSlot_1", -130f);
-        CreateIconSlot(rightPanel, "IconSlot_2", -250f);
-        CreateIconSlot(rightPanel, "IconSlot_3", -370f);
+        icon1Text = CreateIconSlot(rightPanel, "IconSlot_1", -130f);
+        icon2Text = CreateIconSlot(rightPanel, "IconSlot_2", -250f);
+        icon3Text = CreateIconSlot(rightPanel, "IconSlot_3", -370f);
     }
 
-    private static void CreateIconSlot(Transform parent, string name, float topOffset)
+    private static Text CreateIconSlot(Transform parent, string name, float topOffset)
     {
         RectTransform slot = CreatePanel(parent, name,
             new Vector2(0.5f, 1f),
@@ -974,7 +991,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(92f, 92f),
             new Vector2(0.5f, 1f));
         CreatePanelBorder(slot, $"{name}_Border", new Color(0.86f, 0.93f, 1f, 0.45f), 2f);
-        CreateText(slot, $"{name}_Text", "-", 42, new Color(0.86f, 0.93f, 1f, 0.7f),
+        return CreateText(slot, $"{name}_Text", "[-]", 38, new Color(0.86f, 0.93f, 1f, 0.58f),
             new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
     }
 

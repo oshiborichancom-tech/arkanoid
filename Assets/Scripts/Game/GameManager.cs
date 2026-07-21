@@ -27,6 +27,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private bool hasNextStage = true;
     [SerializeField] private bool autoFindReferences = true;
     [SerializeField] private int scorePerBlock = 100;
+    [SerializeField] private string icon1Label = "C";
+    [SerializeField] private string icon2Label = "L";
+    [SerializeField] private string icon3Label = "S";
+    [SerializeField] private int iconScoreTarget = 3000;
 
     private int lives;
     private int remainingBlocks;
@@ -64,6 +68,7 @@ public class GameManager : MonoBehaviour
             uiManager.SetStageName(stageName);
             uiManager.SetLives(lives);
             uiManager.SetScore(currentScore);
+            RefreshStageIconDisplay();
             uiManager.ShowPlaying();
         }
 
@@ -110,6 +115,15 @@ public class GameManager : MonoBehaviour
         lives = initialLives;
         ResetResultStats();
         CurrentState = GameState.ReadyToLaunch;
+    }
+
+    public void ConfigureStageIcons(string clearIconLabel, string lifeIconLabel, string scoreIconLabel, int scoreTarget)
+    {
+        icon1Label = GetSafeIconLabel(clearIconLabel, "C");
+        icon2Label = GetSafeIconLabel(lifeIconLabel, "L");
+        icon3Label = GetSafeIconLabel(scoreIconLabel, "S");
+        iconScoreTarget = Mathf.Max(0, scoreTarget);
+        RefreshStageIconDisplay();
     }
 
     public void ConfigureBallSpawning(
@@ -346,6 +360,7 @@ public class GameManager : MonoBehaviour
             StageUnlockManager.UnlockNextStage(stageId);
         }
 
+        AwardStageIconsOnClear();
         CleanupStageObjects();
 
         if (uiManager != null)
@@ -432,6 +447,55 @@ public class GameManager : MonoBehaviour
     private void AddScore(int amount)
     {
         currentScore = Mathf.Max(0, currentScore + Mathf.Max(0, amount));
+    }
+
+    private void AwardStageIconsOnClear()
+    {
+        bool updated = false;
+        updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.ClearIconIndex);
+
+        if (lives >= 1)
+        {
+            updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.LifeIconIndex);
+        }
+
+        if (currentScore >= iconScoreTarget)
+        {
+            updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.ScoreIconIndex);
+        }
+
+        if (updated)
+        {
+            StageIconProgressManager.Save();
+        }
+
+        RefreshStageIconDisplay();
+    }
+
+    private void RefreshStageIconDisplay()
+    {
+        if (uiManager == null && autoFindReferences)
+        {
+            FindMissingReferences();
+        }
+
+        if (uiManager == null)
+        {
+            return;
+        }
+
+        uiManager.SetStageIcons(
+            icon1Label,
+            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ClearIconIndex),
+            icon2Label,
+            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.LifeIconIndex),
+            icon3Label,
+            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ScoreIconIndex));
+    }
+
+    private static string GetSafeIconLabel(string label, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(label) ? fallback : label.Trim();
     }
 
     private void FindMissingReferences()
@@ -581,6 +645,10 @@ public class GameManager : MonoBehaviour
     {
         stageId = Mathf.Max(1, stageId);
         scorePerBlock = Mathf.Max(0, scorePerBlock);
+        icon1Label = GetSafeIconLabel(icon1Label, "C");
+        icon2Label = GetSafeIconLabel(icon2Label, "L");
+        icon3Label = GetSafeIconLabel(icon3Label, "S");
+        iconScoreTarget = Mathf.Max(0, iconScoreTarget);
         extraBallLaunchAngle = Mathf.Max(0f, extraBallLaunchAngle);
         extraBallSpeed = Mathf.Max(0.1f, extraBallSpeed);
     }

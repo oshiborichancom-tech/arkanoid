@@ -14,12 +14,17 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Text scoreText;
     [SerializeField] private Text clearText;
     [SerializeField] private Text gameOverText;
+    [SerializeField] private Text icon1Text;
+    [SerializeField] private Text icon2Text;
+    [SerializeField] private Text icon3Text;
     [SerializeField] private string livesFormat = "LIFE\n{0}";
     [SerializeField] private string lifeHeartSymbol = "♥";
     [SerializeField] private string lifeHeartSeparator = " ";
     [SerializeField] private string emptyLivesSymbol = "-";
     [SerializeField] private string stageNameFormat = "STAGE: {0}";
     [SerializeField] private string scoreFormat = "SCORE: {0}";
+    [SerializeField] private Color acquiredIconColor = new Color(0.98f, 0.92f, 0.30f, 1f);
+    [SerializeField] private Color lockedIconColor = new Color(0.86f, 0.93f, 1f, 0.58f);
 
     public void Configure(Text lives, Text stageName, Text clear, Text gameOver)
     {
@@ -33,6 +38,27 @@ public class UIManager : MonoBehaviour
         scoreText = score;
         clearText = clear;
         gameOverText = gameOver;
+    }
+
+    public void Configure(
+        Text lives,
+        Text stageName,
+        Text score,
+        Text clear,
+        Text gameOver,
+        Text icon1,
+        Text icon2,
+        Text icon3)
+    {
+        Configure(lives, stageName, score, clear, gameOver);
+        ConfigureStageIconTexts(icon1, icon2, icon3);
+    }
+
+    public void ConfigureStageIconTexts(Text icon1, Text icon2, Text icon3)
+    {
+        icon1Text = icon1;
+        icon2Text = icon2;
+        icon3Text = icon3;
     }
 
     public void SetLives(int lives)
@@ -57,6 +83,13 @@ public class UIManager : MonoBehaviour
         {
             scoreText.text = string.Format(scoreFormat, Mathf.Max(0, score));
         }
+    }
+
+    public void SetStageIcons(string icon1, bool got1, string icon2, bool got2, string icon3, bool got3)
+    {
+        SetStageIcon(icon1Text, icon1, got1);
+        SetStageIcon(icon2Text, icon2, got2);
+        SetStageIcon(icon3Text, icon3, got3);
     }
 
     public void ShowPlaying()
@@ -147,6 +180,17 @@ public class UIManager : MonoBehaviour
         {
             text.gameObject.SetActive(isActive);
         }
+    }
+
+    private void SetStageIcon(Text text, string label, bool acquired)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        text.text = acquired ? $"[{GetSafeIconLabel(label)}]" : "[-]";
+        text.color = acquired ? acquiredIconColor : lockedIconColor;
     }
 
     private string BuildLivesText(int lives)
@@ -269,5 +313,10 @@ public class UIManager : MonoBehaviour
         }
 
         return "Press R to retry\nor return to Stage Select.";
+    }
+
+    private static string GetSafeIconLabel(string label)
+    {
+        return string.IsNullOrWhiteSpace(label) ? "-" : label.Trim();
     }
 }

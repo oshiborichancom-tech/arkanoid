@@ -42,8 +42,9 @@ public static class StageUnlockManager
             PlayerPrefs.DeleteKey(GetStageUnlockKey(stageId));
         }
 
+        StageIconProgressManager.ResetAllKnownStageIcons(false);
         PlayerPrefs.Save();
-        Debug.Log("Stage progress reset. Stage 1 remains unlocked.");
+        Debug.Log("Stage progress and stage icons reset. Stage 1 remains unlocked.");
     }
 
     private static string GetStageUnlockKey(int stageId)

@@ -35,6 +35,10 @@ MonoBehaviour:
   ballSpeed: 7.5
   paddleSpeed: 9
   initialLives: 3
+  icon1Label: C
+  icon2Label: L
+  icon3Label: S
+  iconScoreTarget: 3500
   itemDropChance: 0.4
   paddleExpandMultiplier: 1.5
   paddleExpandDuration: 8
