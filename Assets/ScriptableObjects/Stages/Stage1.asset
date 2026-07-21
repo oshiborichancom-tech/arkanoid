@@ -21,8 +21,17 @@ MonoBehaviour:
   blockRows: 6
   blockColumns: 10
   blockSize: 0.6
-  blockSpacing: 0.12
+  blockSpacing: 0.01
   blockStartPosition: {x: -3.24, y: 3.25}
+  useSingleBlockColor: 1
+  singleBlockColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
+  useManualBlockLayout: 1
+  blockLayout:
+  - 1111111111111
+  - 111111111
+  - 111111111
+  - 111111111110011
+  - 111111111
   ballSpeed: 7
   paddleSpeed: 9
   initialLives: 3

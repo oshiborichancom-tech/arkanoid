@@ -23,8 +23,20 @@ public class StageData : ScriptableObject
     [SerializeField, Min(1)] private int blockRows = 5;
     [SerializeField, Min(1)] private int blockColumns = 10;
     [SerializeField, Min(0.1f)] private float blockSize = 0.6f;
-    [SerializeField, Min(0f)] private float blockSpacing = 0.12f;
+    [SerializeField, Min(0f)] private float blockSpacing = 0.01f;
     [SerializeField] private Vector2 blockStartPosition = new Vector2(-3.24f, 3.25f);
+    [SerializeField] private bool useSingleBlockColor = true;
+    [SerializeField] private Color singleBlockColor = new Color(0.75f, 0.75f, 0.75f, 1f);
+    [SerializeField] private bool useManualBlockLayout = false;
+    [SerializeField]
+    private string[] blockLayout =
+    {
+        "111111111",
+        "111111111",
+        "111111111",
+        "111111111",
+        "111111111"
+    };
 
     [Header("Player")]
     [SerializeField, Min(0.1f)] private float ballSpeed = 7f;
@@ -50,6 +62,10 @@ public class StageData : ScriptableObject
     public float BlockSize => Mathf.Max(0.1f, blockSize);
     public float BlockSpacing => Mathf.Max(0f, blockSpacing);
     public Vector2 BlockStartPosition => blockStartPosition;
+    public bool UseSingleBlockColor => useSingleBlockColor;
+    public Color SingleBlockColor => singleBlockColor;
+    public bool UseManualBlockLayout => useManualBlockLayout;
+    public string[] BlockLayout => blockLayout;
     public float BallSpeed => Mathf.Max(0.1f, ballSpeed);
     public float PaddleSpeed => Mathf.Max(0.1f, paddleSpeed);
     public int InitialLives => Mathf.Max(1, initialLives);

@@ -10,7 +10,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const int DefaultBlockRows = 5;
     private const int DefaultBlockColumns = 10;
     private const float DefaultBlockSize = 0.6f;
-    private const float DefaultBlockSpacing = 0.12f;
+    private const float DefaultBlockSpacing = 0.01f;
     private const float DefaultBallSpeed = 7f;
     private const float DefaultPaddleSpeed = 9f;
     private const int DefaultInitialLives = 3;
@@ -74,6 +74,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         public float BlockSize;
         public float BlockSpacing;
         public Vector2 BlockStartPosition;
+        public bool UseSingleBlockColor;
+        public Color SingleBlockColor;
+        public bool UseManualBlockLayout;
+        public string[] BlockLayout;
         public float BallSpeed;
         public float PaddleSpeed;
         public int InitialLives;
@@ -154,6 +158,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             BlockSize = blockSize > 0f ? blockSize : DefaultBlockSize,
             BlockSpacing = Mathf.Max(0f, blockSpacing),
             BlockStartPosition = blockStartPosition,
+            UseSingleBlockColor = true,
+            SingleBlockColor = new Color(0.75f, 0.75f, 0.75f, 1f),
+            UseManualBlockLayout = false,
+            BlockLayout = null,
             BallSpeed = ballSpeed > 0f ? ballSpeed : DefaultBallSpeed,
             PaddleSpeed = paddleSpeed > 0f ? paddleSpeed : DefaultPaddleSpeed,
             InitialLives = initialLives > 0 ? initialLives : DefaultInitialLives,
@@ -192,6 +200,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         settings.BlockSize = effectiveStageData.BlockSize;
         settings.BlockSpacing = effectiveStageData.BlockSpacing;
         settings.BlockStartPosition = effectiveStageData.BlockStartPosition;
+        settings.UseSingleBlockColor = effectiveStageData.UseSingleBlockColor;
+        settings.SingleBlockColor = effectiveStageData.SingleBlockColor;
+        settings.UseManualBlockLayout = effectiveStageData.UseManualBlockLayout;
+        settings.BlockLayout = effectiveStageData.BlockLayout;
         settings.BallSpeed = effectiveStageData.BallSpeed;
         settings.PaddleSpeed = effectiveStageData.PaddleSpeed;
         settings.InitialLives = effectiveStageData.InitialLives;
@@ -596,8 +608,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     {
         float safeBlockSize = Mathf.Max(0.1f, settings.BlockSize);
         float safeSpacing = Mathf.Max(0f, settings.BlockSpacing);
-        int safeColumns = Mathf.Max(1, settings.BlockColumns);
-        int safeRows = Mathf.Max(1, settings.BlockRows);
+        GetEffectiveBlockGridDimensions(settings, out int safeRows, out int safeColumns);
 
         float width = safeColumns * safeBlockSize + (safeColumns - 1) * safeSpacing;
         float height = safeRows * safeBlockSize + (safeRows - 1) * safeSpacing;
@@ -607,8 +618,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private static Vector2 GetBlockGridCenter(StageRuntimeSettings settings)
     {
         float step = Mathf.Max(0.1f, settings.BlockSize) + Mathf.Max(0f, settings.BlockSpacing);
-        int safeColumns = Mathf.Max(1, settings.BlockColumns);
-        int safeRows = Mathf.Max(1, settings.BlockRows);
+        GetEffectiveBlockGridDimensions(settings, out int safeRows, out int safeColumns);
 
         return settings.BlockStartPosition + new Vector2(
             (safeColumns - 1) * step * 0.5f,
@@ -634,12 +644,56 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             : playAreaBounds.center.y;
 
         float step = Mathf.Max(0.1f, settings.BlockSize) + Mathf.Max(0f, settings.BlockSpacing);
-        int safeColumns = Mathf.Max(1, settings.BlockColumns);
-        int safeRows = Mathf.Max(1, settings.BlockRows);
+        GetEffectiveBlockGridDimensions(settings, out int safeRows, out int safeColumns);
 
         return clampedCenter - new Vector2(
             (safeColumns - 1) * step * 0.5f,
             -(safeRows - 1) * step * 0.5f);
+    }
+
+    private static void GetEffectiveBlockGridDimensions(StageRuntimeSettings settings, out int rows, out int columns)
+    {
+        if (TryGetManualBlockLayoutDimensions(settings, out rows, out columns))
+        {
+            return;
+        }
+
+        rows = Mathf.Max(1, settings.BlockRows);
+        columns = Mathf.Max(1, settings.BlockColumns);
+    }
+
+    private static bool TryGetManualBlockLayoutDimensions(StageRuntimeSettings settings, out int rows, out int columns)
+    {
+        rows = 0;
+        columns = 0;
+
+        if (!settings.UseManualBlockLayout || settings.BlockLayout == null || settings.BlockLayout.Length <= 0)
+        {
+            return false;
+        }
+
+        bool hasBlock = false;
+        rows = settings.BlockLayout.Length;
+
+        for (int row = 0; row < settings.BlockLayout.Length; row++)
+        {
+            string rowText = settings.BlockLayout[row];
+            if (rowText == null)
+            {
+                continue;
+            }
+
+            columns = Mathf.Max(columns, rowText.Length);
+            for (int column = 0; column < rowText.Length; column++)
+            {
+                if (rowText[column] == '1')
+                {
+                    hasBlock = true;
+                }
+            }
+        }
+
+        return rows > 0 && columns > 0 && hasBlock;
     }
 
     private static void CreatePlayAreaWalls(Rect playAreaBounds, float wallThickness, PhysicsMaterial2D material)
@@ -812,6 +866,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             settings.BlockSpacing,
             adjustedBlockStartPosition);
         builder.ConfigureItemDrops(itemPrefab, safeDropChance, itemEffectManager);
+        builder.ConfigureBlockColor(settings.UseSingleBlockColor, settings.SingleBlockColor);
+        builder.ConfigureManualBlockLayout(settings.UseManualBlockLayout, settings.BlockLayout);
     }
 
     private static ItemController CreateItemPrefab(Transform parent)
