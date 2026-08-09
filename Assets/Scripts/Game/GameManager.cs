@@ -356,13 +356,16 @@ public class GameManager : MonoBehaviour
         Debug.Log("Stage clear.");
         bool unlockedNextStage = hasNextStage;
         bool isFinalStage = !hasNextStage;
+        bool achievedClearIcon = true;
+        bool achievedNoMissIcon = missCount == 0;
+        bool achievedScoreIcon = currentScore >= iconScoreTarget;
 
         if (hasNextStage)
         {
             StageUnlockManager.UnlockNextStage(stageId);
         }
 
-        AwardStageIconsOnClear();
+        AwardStageIconsOnClear(achievedClearIcon, achievedNoMissIcon, achievedScoreIcon);
         CleanupStageObjects();
 
         if (uiManager != null)
@@ -374,7 +377,13 @@ public class GameManager : MonoBehaviour
                 destroyedBlocks,
                 GetSafeTotalBlocks(),
                 lives,
-                GetClearRank());
+                GetClearRank(),
+                icon1Label,
+                achievedClearIcon,
+                icon2Label,
+                achievedNoMissIcon,
+                icon3Label,
+                achievedScoreIcon);
         }
     }
 
@@ -452,17 +461,21 @@ public class GameManager : MonoBehaviour
         currentScore = Mathf.Max(0, currentScore + Mathf.Max(0, amount));
     }
 
-    private void AwardStageIconsOnClear()
+    private void AwardStageIconsOnClear(bool achievedClearIcon, bool achievedNoMissIcon, bool achievedScoreIcon)
     {
         bool updated = false;
-        updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.ClearIconIndex);
 
-        if (missCount == 0)
+        if (achievedClearIcon)
+        {
+            updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.ClearIconIndex);
+        }
+
+        if (achievedNoMissIcon)
         {
             updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.NoMissIconIndex);
         }
 
-        if (currentScore >= iconScoreTarget)
+        if (achievedScoreIcon)
         {
             updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.ScoreIconIndex);
         }

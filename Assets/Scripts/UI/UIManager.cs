@@ -178,6 +178,39 @@ public class UIManager : MonoBehaviour
         SetActive(gameOverText, false);
     }
 
+    public void ShowClear(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank,
+        string clearIconLabel,
+        bool achievedClearIcon,
+        string noMissIconLabel,
+        bool achievedNoMissIcon,
+        string scoreIconLabel,
+        bool achievedScoreIcon)
+    {
+        SetText(clearText, BuildClearMessage(
+            unlockedNextStage,
+            isFinalStage,
+            score,
+            destroyedBlocks,
+            totalBlocks,
+            lives,
+            rank,
+            clearIconLabel,
+            achievedClearIcon,
+            noMissIconLabel,
+            achievedNoMissIcon,
+            scoreIconLabel,
+            achievedScoreIcon));
+        SetActive(clearText, true);
+        SetActive(gameOverText, false);
+    }
+
     public void ShowGameOver()
     {
         SetActive(clearText, false);
@@ -334,6 +367,32 @@ public class UIManager : MonoBehaviour
         return $"CLEAR!\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
     }
 
+    private static string BuildClearMessage(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank,
+        string clearIconLabel,
+        bool achievedClearIcon,
+        string noMissIconLabel,
+        bool achievedNoMissIcon,
+        string scoreIconLabel,
+        bool achievedScoreIcon)
+    {
+        string achievedIconsLine = BuildAchievedIconsLine(
+            clearIconLabel,
+            achievedClearIcon,
+            noMissIconLabel,
+            achievedNoMissIcon,
+            scoreIconLabel,
+            achievedScoreIcon);
+
+        return $"CLEAR!\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n{achievedIconsLine}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
+    }
+
     private static string BuildGameOverMessage(int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
         return BuildGameOverMessage(0, destroyedBlocks, totalBlocks, lives, rank);
@@ -358,6 +417,22 @@ public class UIManager : MonoBehaviour
         string safeRank = string.IsNullOrWhiteSpace(rank) ? "-" : rank;
 
         return $"Score: {safeScore}\nBlocks: {safeDestroyedBlocks} / {safeTotalBlocks}\nLives: {safeLives}\nRank: {safeRank}";
+    }
+
+    private static string BuildAchievedIconsLine(
+        string clearIconLabel,
+        bool achievedClearIcon,
+        string noMissIconLabel,
+        bool achievedNoMissIcon,
+        string scoreIconLabel,
+        bool achievedScoreIcon)
+    {
+        return $"Icons: {BuildAchievedIconText(clearIconLabel, achievedClearIcon)} {BuildAchievedIconText(noMissIconLabel, achievedNoMissIcon)} {BuildAchievedIconText(scoreIconLabel, achievedScoreIcon)}";
+    }
+
+    private static string BuildAchievedIconText(string label, bool achieved)
+    {
+        return achieved ? $"[{GetSafeIconLabel(label)}]" : "[-]";
     }
 
     private static string BuildClearActionMessage(bool unlockedNextStage, bool isFinalStage)
