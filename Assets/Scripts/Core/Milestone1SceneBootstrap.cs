@@ -23,6 +23,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const string DefaultIcon2Description = "No Miss";
     private const string DefaultIcon3Description = "Score";
     private const int DefaultIconScoreTarget = 3000;
+    private const float StageSelectButtonSpacing = 118f;
     private const int BackgroundSortingOrder = -20;
     private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
     private static readonly Vector2 DefaultPlayAreaCenter = Vector2.zero;
@@ -374,7 +375,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(760f, 100f));
 
         int buttonCount = CreateStageButtonsFromDatabase(canvas.transform);
-        float backButtonY = buttonCount > 0 ? 70f - buttonCount * 95f - 15f : -85f;
+        float backButtonY = buttonCount > 0 ? 70f - buttonCount * StageSelectButtonSpacing - 15f : -85f;
 
         Button backButton = CreateButton(canvas.transform, "BackButton", "Back",
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, backButtonY), new Vector2(260f, 72f));
@@ -414,7 +415,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
                 GetStageSelectLabel(currentStageData, isUnlocked),
                 currentStageData,
                 isUnlocked,
-                new Vector2(0f, 70f - buttonCount * 95f));
+                new Vector2(0f, 70f - buttonCount * StageSelectButtonSpacing));
             buttonCount++;
         }
 
@@ -449,9 +450,31 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(0.5f, 0.5f),
             new Vector2(0.5f, 0.5f),
             anchoredPosition,
-            new Vector2(360f, 84f));
+            new Vector2(360f, 108f));
+
+        Text titleText = stageButton.transform.Find("Text")?.GetComponent<Text>();
+        if (titleText != null)
+        {
+            RectTransform titleTransform = titleText.GetComponent<RectTransform>();
+            titleTransform.anchorMin = new Vector2(0f, 0.58f);
+            titleTransform.anchorMax = new Vector2(1f, 1f);
+            titleTransform.anchoredPosition = Vector2.zero;
+            titleTransform.sizeDelta = Vector2.zero;
+            titleText.fontSize = 27;
+        }
+
+        Text iconStatusText = CreateText(stageButton.transform, "IconStatusText", "[-] [-] [-]",
+            21, new Color(0.88f, 0.95f, 1f, 0.95f),
+            new Vector2(0f, 0.26f), new Vector2(1f, 0.62f), Vector2.zero, Vector2.zero);
+        iconStatusText.fontStyle = FontStyle.Bold;
+
+        Text perfectText = CreateText(stageButton.transform, "PerfectText", string.Empty,
+            18, new Color(1f, 0.86f, 0.32f, 1f),
+            new Vector2(0f, 0f), new Vector2(1f, 0.28f), Vector2.zero, Vector2.zero);
+        perfectText.fontStyle = FontStyle.Bold;
+
         StageSelectButton stageSelectButton = stageButton.gameObject.AddComponent<StageSelectButton>();
-        stageSelectButton.Configure(data, isUnlocked);
+        stageSelectButton.Configure(data, isUnlocked, iconStatusText, perfectText);
         stageButton.onClick.AddListener(stageSelectButton.SelectStageAndLoadGame);
     }
 
