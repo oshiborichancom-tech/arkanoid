@@ -123,10 +123,25 @@ public class UIManager : MonoBehaviour
 
     public void SetStageIcons(string icon1, bool got1, string icon2, bool got2, string icon3, bool got3, int scoreTarget)
     {
+        SetStageIcons(icon1, got1, "Clear", icon2, got2, "No Miss", icon3, got3, "Score", scoreTarget);
+    }
+
+    public void SetStageIcons(
+        string icon1,
+        bool got1,
+        string icon1Description,
+        string icon2,
+        bool got2,
+        string icon2Description,
+        string icon3,
+        bool got3,
+        string icon3Description,
+        int scoreTarget)
+    {
         SetStageIcon(icon1Text, icon1FillImage, icon1BorderImage, icon1, got1, clearIconFillColor);
         SetStageIcon(icon2Text, icon2FillImage, icon2BorderImage, icon2, got2, noMissIconFillColor);
         SetStageIcon(icon3Text, icon3FillImage, icon3BorderImage, icon3, got3, scoreIconFillColor);
-        SetIconConditionText(icon1, icon2, icon3, scoreTarget);
+        SetIconConditionText(icon1, icon1Description, icon2, icon2Description, icon3, icon3Description, scoreTarget);
     }
 
     public void ShowPlaying()
@@ -271,7 +286,14 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void SetIconConditionText(string icon1, string icon2, string icon3, int scoreTarget)
+    private void SetIconConditionText(
+        string icon1,
+        string icon1Description,
+        string icon2,
+        string icon2Description,
+        string icon3,
+        string icon3Description,
+        int scoreTarget)
     {
         if (iconConditionText == null)
         {
@@ -279,11 +301,14 @@ public class UIManager : MonoBehaviour
         }
 
         string clearLabel = GetSafeIconLabel(icon1);
+        string clearDescription = GetSafeIconDescription(icon1Description, "Clear");
         string noMissLabel = GetSafeIconLabel(icon2);
+        string noMissDescription = GetSafeIconDescription(icon2Description, "No Miss");
         string scoreLabel = GetSafeIconLabel(icon3);
+        string scoreDescription = GetSafeIconDescription(icon3Description, "Score");
         int safeScoreTarget = Mathf.Max(0, scoreTarget);
 
-        iconConditionText.text = $"{clearLabel}: Clear\n{noMissLabel}: No Miss\n{scoreLabel}: Score {safeScoreTarget}+";
+        iconConditionText.text = $"{clearLabel}: {clearDescription}\n{noMissLabel}: {noMissDescription}\n{scoreLabel}: {scoreDescription} {safeScoreTarget}+";
     }
 
     private string BuildLivesText(int lives)
@@ -453,5 +478,10 @@ public class UIManager : MonoBehaviour
     private static string GetSafeIconLabel(string label)
     {
         return string.IsNullOrWhiteSpace(label) ? "-" : label.Trim();
+    }
+
+    private static string GetSafeIconDescription(string description, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(description) ? fallback : description.Trim();
     }
 }

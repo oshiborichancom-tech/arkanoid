@@ -47,6 +47,9 @@ public class StageData : ScriptableObject
     [SerializeField] private string icon1Label = "C";
     [SerializeField] private string icon2Label = "N";
     [SerializeField] private string icon3Label = "S";
+    [SerializeField] private string icon1Description = "Clear";
+    [SerializeField] private string icon2Description = "No Miss";
+    [SerializeField] private string icon3Description = "Score";
     [SerializeField, Min(0)] private int iconScoreTarget = 3000;
 
     [Header("Items")]
@@ -78,6 +81,9 @@ public class StageData : ScriptableObject
     public string Icon1Label => GetSafeIconLabel(icon1Label, "C");
     public string Icon2Label => GetSafeIconLabel(icon2Label, "N");
     public string Icon3Label => GetSafeIconLabel(icon3Label, "S");
+    public string Icon1Description => GetSafeIconDescription(icon1Description, "Clear");
+    public string Icon2Description => GetSafeIconDescription(icon2Description, "No Miss");
+    public string Icon3Description => GetSafeIconDescription(icon3Description, "Score");
     public int IconScoreTarget => Mathf.Max(0, iconScoreTarget);
     public float ItemDropChance => Mathf.Clamp01(itemDropChance);
     public float PaddleExpandMultiplier => Mathf.Max(1f, paddleExpandMultiplier);
@@ -105,6 +111,9 @@ public class StageData : ScriptableObject
         icon1Label = GetSafeIconLabel(icon1Label, "C");
         icon2Label = GetSafeIconLabel(icon2Label, "N");
         icon3Label = GetSafeIconLabel(icon3Label, "S");
+        icon1Description = GetSafeIconDescription(icon1Description, "Clear");
+        icon2Description = GetSafeIconDescription(icon2Description, "No Miss");
+        icon3Description = GetSafeIconDescription(icon3Description, "Score");
         iconScoreTarget = Mathf.Max(0, iconScoreTarget);
         itemDropChance = Mathf.Clamp01(itemDropChance);
         paddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier);
@@ -122,5 +131,10 @@ public class StageData : ScriptableObject
     private static string GetSafeIconLabel(string label, string fallback)
     {
         return string.IsNullOrWhiteSpace(label) ? fallback : label.Trim();
+    }
+
+    private static string GetSafeIconDescription(string description, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(description) ? fallback : description.Trim();
     }
 }

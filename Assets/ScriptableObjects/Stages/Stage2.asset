@@ -38,6 +38,9 @@ MonoBehaviour:
   icon1Label: C
   icon2Label: N
   icon3Label: S
+  icon1Description: Clear
+  icon2Description: No Miss
+  icon3Description: Score
   iconScoreTarget: 3500
   itemDropChance: 0.4
   paddleExpandMultiplier: 1.5

@@ -19,6 +19,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const string DefaultIcon1Label = "C";
     private const string DefaultIcon2Label = "N";
     private const string DefaultIcon3Label = "S";
+    private const string DefaultIcon1Description = "Clear";
+    private const string DefaultIcon2Description = "No Miss";
+    private const string DefaultIcon3Description = "Score";
     private const int DefaultIconScoreTarget = 3000;
     private const int BackgroundSortingOrder = -20;
     private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
@@ -88,6 +91,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         public string Icon1Label;
         public string Icon2Label;
         public string Icon3Label;
+        public string Icon1Description;
+        public string Icon2Description;
+        public string Icon3Description;
         public int IconScoreTarget;
         public float ItemDropChance;
         public float PaddleExpandMultiplier;
@@ -183,6 +189,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             Icon1Label = DefaultIcon1Label,
             Icon2Label = DefaultIcon2Label,
             Icon3Label = DefaultIcon3Label,
+            Icon1Description = DefaultIcon1Description,
+            Icon2Description = DefaultIcon2Description,
+            Icon3Description = DefaultIcon3Description,
             IconScoreTarget = DefaultIconScoreTarget,
             ItemDropChance = Mathf.Clamp01(itemDropChance),
             PaddleExpandMultiplier = Mathf.Max(1f, paddleExpandMultiplier),
@@ -229,6 +238,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         settings.Icon1Label = effectiveStageData.Icon1Label;
         settings.Icon2Label = effectiveStageData.Icon2Label;
         settings.Icon3Label = effectiveStageData.Icon3Label;
+        settings.Icon1Description = effectiveStageData.Icon1Description;
+        settings.Icon2Description = effectiveStageData.Icon2Description;
+        settings.Icon3Description = effectiveStageData.Icon3Description;
         settings.IconScoreTarget = effectiveStageData.IconScoreTarget;
         settings.ItemDropChance = effectiveStageData.ItemDropChance;
         settings.PaddleExpandMultiplier = effectiveStageData.PaddleExpandMultiplier;
@@ -529,7 +541,14 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             icon3View.BorderImage,
             iconConditionText);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
-        gameManager.ConfigureStageIcons(settings.Icon1Label, settings.Icon2Label, settings.Icon3Label, settings.IconScoreTarget);
+        gameManager.ConfigureStageIcons(
+            settings.Icon1Label,
+            settings.Icon1Description,
+            settings.Icon2Label,
+            settings.Icon2Description,
+            settings.Icon3Label,
+            settings.Icon3Description,
+            settings.IconScoreTarget);
         gameManager.ConfigureBallSpawning(
             ball.GetComponent<BallController>(),
             paddle.transform,

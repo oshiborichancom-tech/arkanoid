@@ -30,6 +30,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private string icon1Label = "C";
     [SerializeField] private string icon2Label = "N";
     [SerializeField] private string icon3Label = "S";
+    [SerializeField] private string icon1Description = "Clear";
+    [SerializeField] private string icon2Description = "No Miss";
+    [SerializeField] private string icon3Description = "Score";
     [SerializeField] private int iconScoreTarget = 3000;
 
     private int lives;
@@ -120,9 +123,31 @@ public class GameManager : MonoBehaviour
 
     public void ConfigureStageIcons(string clearIconLabel, string noMissIconLabel, string scoreIconLabel, int scoreTarget)
     {
+        ConfigureStageIcons(
+            clearIconLabel,
+            "Clear",
+            noMissIconLabel,
+            "No Miss",
+            scoreIconLabel,
+            "Score",
+            scoreTarget);
+    }
+
+    public void ConfigureStageIcons(
+        string clearIconLabel,
+        string clearIconDescription,
+        string noMissIconLabel,
+        string noMissIconDescription,
+        string scoreIconLabel,
+        string scoreIconDescription,
+        int scoreTarget)
+    {
         icon1Label = GetSafeIconLabel(clearIconLabel, "C");
+        icon1Description = GetSafeIconDescription(clearIconDescription, "Clear");
         icon2Label = GetSafeIconLabel(noMissIconLabel, "N");
+        icon2Description = GetSafeIconDescription(noMissIconDescription, "No Miss");
         icon3Label = GetSafeIconLabel(scoreIconLabel, "S");
+        icon3Description = GetSafeIconDescription(scoreIconDescription, "Score");
         iconScoreTarget = Mathf.Max(0, scoreTarget);
         RefreshStageIconDisplay();
     }
@@ -503,10 +528,13 @@ public class GameManager : MonoBehaviour
         uiManager.SetStageIcons(
             icon1Label,
             StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ClearIconIndex),
+            icon1Description,
             icon2Label,
             StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.NoMissIconIndex),
+            icon2Description,
             icon3Label,
             StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ScoreIconIndex),
+            icon3Description,
             iconScoreTarget);
     }
 
@@ -663,10 +691,18 @@ public class GameManager : MonoBehaviour
         stageId = Mathf.Max(1, stageId);
         scorePerBlock = Mathf.Max(0, scorePerBlock);
         icon1Label = GetSafeIconLabel(icon1Label, "C");
+        icon1Description = GetSafeIconDescription(icon1Description, "Clear");
         icon2Label = GetSafeIconLabel(icon2Label, "N");
+        icon2Description = GetSafeIconDescription(icon2Description, "No Miss");
         icon3Label = GetSafeIconLabel(icon3Label, "S");
+        icon3Description = GetSafeIconDescription(icon3Description, "Score");
         iconScoreTarget = Mathf.Max(0, iconScoreTarget);
         extraBallLaunchAngle = Mathf.Max(0f, extraBallLaunchAngle);
         extraBallSpeed = Mathf.Max(0.1f, extraBallSpeed);
+    }
+
+    private static string GetSafeIconDescription(string description, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(description) ? fallback : description.Trim();
     }
 }
