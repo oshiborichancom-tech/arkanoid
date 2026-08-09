@@ -34,7 +34,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Color lockedIconColor = new Color(0.78f, 0.84f, 0.90f, 0.85f);
     [SerializeField] private Color lockedIconFillColor = new Color(0.38f, 0.42f, 0.48f, 0.42f);
     [SerializeField] private Color clearIconFillColor = new Color(0.63f, 0.82f, 1f, 0.92f);
-    [SerializeField] private Color lifeIconFillColor = new Color(0.70f, 0.88f, 0.62f, 0.92f);
+    [SerializeField] private Color noMissIconFillColor = new Color(0.70f, 0.88f, 0.62f, 0.92f);
     [SerializeField] private Color scoreIconFillColor = new Color(1f, 0.88f, 0.42f, 0.92f);
     [SerializeField] private Color acquiredIconBorderColor = new Color(0.95f, 0.98f, 1f, 0.95f);
     [SerializeField] private Color lockedIconBorderColor = new Color(0.70f, 0.76f, 0.82f, 0.55f);
@@ -124,7 +124,7 @@ public class UIManager : MonoBehaviour
     public void SetStageIcons(string icon1, bool got1, string icon2, bool got2, string icon3, bool got3, int scoreTarget)
     {
         SetStageIcon(icon1Text, icon1FillImage, icon1BorderImage, icon1, got1, clearIconFillColor);
-        SetStageIcon(icon2Text, icon2FillImage, icon2BorderImage, icon2, got2, lifeIconFillColor);
+        SetStageIcon(icon2Text, icon2FillImage, icon2BorderImage, icon2, got2, noMissIconFillColor);
         SetStageIcon(icon3Text, icon3FillImage, icon3BorderImage, icon3, got3, scoreIconFillColor);
         SetIconConditionText(icon1, icon2, icon3, scoreTarget);
     }
@@ -246,11 +246,11 @@ public class UIManager : MonoBehaviour
         }
 
         string clearLabel = GetSafeIconLabel(icon1);
-        string lifeLabel = GetSafeIconLabel(icon2);
+        string noMissLabel = GetSafeIconLabel(icon2);
         string scoreLabel = GetSafeIconLabel(icon3);
         int safeScoreTarget = Mathf.Max(0, scoreTarget);
 
-        iconConditionText.text = $"{clearLabel}: Clear\n{lifeLabel}: Life 1+\n{scoreLabel}: Score {safeScoreTarget}+";
+        iconConditionText.text = $"{clearLabel}: Clear\n{noMissLabel}: No Miss\n{scoreLabel}: Score {safeScoreTarget}+";
     }
 
     private string BuildLivesText(int lives)

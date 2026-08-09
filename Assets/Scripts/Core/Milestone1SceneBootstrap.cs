@@ -17,7 +17,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const int DefaultAddBallsCount = 2;
     private const float DefaultAddBallSpeed = 7f;
     private const string DefaultIcon1Label = "C";
-    private const string DefaultIcon2Label = "L";
+    private const string DefaultIcon2Label = "N";
     private const string DefaultIcon3Label = "S";
     private const int DefaultIconScoreTarget = 3000;
     private const int BackgroundSortingOrder = -20;
@@ -1013,7 +1013,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         icon2View = CreateIconSlot(rightPanel, "IconSlot_2", new Vector2(-86f, -320f));
         icon3View = CreateIconSlot(rightPanel, "IconSlot_3", new Vector2(86f, -320f));
 
-        iconConditionText = CreateText(rightPanel, "IconConditionText", "C: Clear\nL: Life 1+\nS: Score",
+        iconConditionText = CreateText(rightPanel, "IconConditionText", "C: Clear\nN: No Miss\nS: Score",
             22, new Color(0.90f, 0.95f, 1f, 0.92f),
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -465f), new Vector2(330f, 120f),
             new Vector2(0.5f, 1f), TextAnchor.MiddleLeft);

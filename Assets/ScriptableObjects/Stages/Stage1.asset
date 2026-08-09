@@ -36,7 +36,7 @@ MonoBehaviour:
   paddleSpeed: 9
   initialLives: 3
   icon1Label: C
-  icon2Label: L
+  icon2Label: N
   icon3Label: S
   iconScoreTarget: 3000
   itemDropChance: 0.5

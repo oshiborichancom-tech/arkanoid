@@ -5,7 +5,7 @@ public static class StageIconProgressManager
     public const string StageIconKeyPrefix = "Arkanoid_StageIcon_";
     public const int IconCount = 3;
     public const int ClearIconIndex = 1;
-    public const int LifeIconIndex = 2;
+    public const int NoMissIconIndex = 2;
     public const int ScoreIconIndex = 3;
 
     private const int FirstStageId = 1;

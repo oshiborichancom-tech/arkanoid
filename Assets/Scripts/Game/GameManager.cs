@@ -28,11 +28,12 @@ public class GameManager : MonoBehaviour
     [SerializeField] private bool autoFindReferences = true;
     [SerializeField] private int scorePerBlock = 100;
     [SerializeField] private string icon1Label = "C";
-    [SerializeField] private string icon2Label = "L";
+    [SerializeField] private string icon2Label = "N";
     [SerializeField] private string icon3Label = "S";
     [SerializeField] private int iconScoreTarget = 3000;
 
     private int lives;
+    private int missCount;
     private int remainingBlocks;
     private int totalBlocks;
     private int destroyedBlocks;
@@ -117,10 +118,10 @@ public class GameManager : MonoBehaviour
         CurrentState = GameState.ReadyToLaunch;
     }
 
-    public void ConfigureStageIcons(string clearIconLabel, string lifeIconLabel, string scoreIconLabel, int scoreTarget)
+    public void ConfigureStageIcons(string clearIconLabel, string noMissIconLabel, string scoreIconLabel, int scoreTarget)
     {
         icon1Label = GetSafeIconLabel(clearIconLabel, "C");
-        icon2Label = GetSafeIconLabel(lifeIconLabel, "L");
+        icon2Label = GetSafeIconLabel(noMissIconLabel, "N");
         icon3Label = GetSafeIconLabel(scoreIconLabel, "S");
         iconScoreTarget = Mathf.Max(0, scoreTarget);
         RefreshStageIconDisplay();
@@ -281,6 +282,7 @@ public class GameManager : MonoBehaviour
 
     private void HandleAllBallsLost()
     {
+        missCount++;
         lives = Mathf.Max(0, lives - 1);
 
         if (uiManager != null)
@@ -400,6 +402,7 @@ public class GameManager : MonoBehaviour
         remainingBlocks = 0;
         destroyedBlocks = 0;
         currentScore = 0;
+        missCount = 0;
     }
 
     private int GetSafeTotalBlocks()
@@ -454,9 +457,9 @@ public class GameManager : MonoBehaviour
         bool updated = false;
         updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.ClearIconIndex);
 
-        if (lives >= 1)
+        if (missCount == 0)
         {
-            updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.LifeIconIndex);
+            updated |= StageIconProgressManager.SetIconAcquiredIfNeeded(stageId, StageIconProgressManager.NoMissIconIndex);
         }
 
         if (currentScore >= iconScoreTarget)
@@ -488,7 +491,7 @@ public class GameManager : MonoBehaviour
             icon1Label,
             StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ClearIconIndex),
             icon2Label,
-            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.LifeIconIndex),
+            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.NoMissIconIndex),
             icon3Label,
             StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ScoreIconIndex),
             iconScoreTarget);
@@ -647,7 +650,7 @@ public class GameManager : MonoBehaviour
         stageId = Mathf.Max(1, stageId);
         scorePerBlock = Mathf.Max(0, scorePerBlock);
         icon1Label = GetSafeIconLabel(icon1Label, "C");
-        icon2Label = GetSafeIconLabel(icon2Label, "L");
+        icon2Label = GetSafeIconLabel(icon2Label, "N");
         icon3Label = GetSafeIconLabel(icon3Label, "S");
         iconScoreTarget = Mathf.Max(0, iconScoreTarget);
         extraBallLaunchAngle = Mathf.Max(0f, extraBallLaunchAngle);

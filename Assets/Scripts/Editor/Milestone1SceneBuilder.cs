@@ -285,7 +285,7 @@ public static class Milestone1SceneBuilder
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
         SetString(stageData, "icon1Label", "C");
-        SetString(stageData, "icon2Label", "L");
+        SetString(stageData, "icon2Label", "N");
         SetString(stageData, "icon3Label", "S");
         SetInt(stageData, "iconScoreTarget", 3000);
         SetFloat(stageData, "itemDropChance", 0.5f);
@@ -341,7 +341,7 @@ public static class Milestone1SceneBuilder
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
         SetString(stageData, "icon1Label", "C");
-        SetString(stageData, "icon2Label", "L");
+        SetString(stageData, "icon2Label", "N");
         SetString(stageData, "icon3Label", "S");
         SetInt(stageData, "iconScoreTarget", 3500);
         SetFloat(stageData, "itemDropChance", 0.4f);
@@ -378,7 +378,7 @@ public static class Milestone1SceneBuilder
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
         SetString(stageData, "icon1Label", "C");
-        SetString(stageData, "icon2Label", "L");
+        SetString(stageData, "icon2Label", "N");
         SetString(stageData, "icon3Label", "S");
         SetInt(stageData, "iconScoreTarget", 4000);
         SetFloat(stageData, "itemDropChance", 0.35f);

@@ -45,7 +45,7 @@ public class StageData : ScriptableObject
 
     [Header("Icons")]
     [SerializeField] private string icon1Label = "C";
-    [SerializeField] private string icon2Label = "L";
+    [SerializeField] private string icon2Label = "N";
     [SerializeField] private string icon3Label = "S";
     [SerializeField, Min(0)] private int iconScoreTarget = 3000;
 
@@ -76,7 +76,7 @@ public class StageData : ScriptableObject
     public float PaddleSpeed => Mathf.Max(0.1f, paddleSpeed);
     public int InitialLives => Mathf.Max(1, initialLives);
     public string Icon1Label => GetSafeIconLabel(icon1Label, "C");
-    public string Icon2Label => GetSafeIconLabel(icon2Label, "L");
+    public string Icon2Label => GetSafeIconLabel(icon2Label, "N");
     public string Icon3Label => GetSafeIconLabel(icon3Label, "S");
     public int IconScoreTarget => Mathf.Max(0, iconScoreTarget);
     public float ItemDropChance => Mathf.Clamp01(itemDropChance);
@@ -103,7 +103,7 @@ public class StageData : ScriptableObject
         paddleSpeed = Mathf.Max(0.1f, paddleSpeed);
         initialLives = Mathf.Max(1, initialLives);
         icon1Label = GetSafeIconLabel(icon1Label, "C");
-        icon2Label = GetSafeIconLabel(icon2Label, "L");
+        icon2Label = GetSafeIconLabel(icon2Label, "N");
         icon3Label = GetSafeIconLabel(icon3Label, "S");
         iconScoreTarget = Mathf.Max(0, iconScoreTarget);
         itemDropChance = Mathf.Clamp01(itemDropChance);
