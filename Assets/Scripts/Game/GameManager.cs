@@ -490,7 +490,8 @@ public class GameManager : MonoBehaviour
             icon2Label,
             StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.LifeIconIndex),
             icon3Label,
-            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ScoreIconIndex));
+            StageIconProgressManager.IsIconAcquired(stageId, StageIconProgressManager.ScoreIconIndex),
+            iconScoreTarget);
     }
 
     private static string GetSafeIconLabel(string label, string fallback)

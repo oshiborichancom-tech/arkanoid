@@ -104,6 +104,13 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         public float PlayAreaDebugFrameThickness;
     }
 
+    private struct IconSlotViews
+    {
+        public Text LabelText;
+        public Image FillImage;
+        public Image BorderImage;
+    }
+
     private void Awake()
     {
         EnsureSharedAssets();
@@ -488,7 +495,12 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 64f), new Vector2(0.5f, 0f));
         backButton.onClick.AddListener(loader.LoadStageSelect);
 
-        CreateIconPanelContents(rightPanel, out Text icon1Text, out Text icon2Text, out Text icon3Text);
+        CreateIconPanelContents(
+            rightPanel,
+            out IconSlotViews icon1View,
+            out IconSlotViews icon2View,
+            out IconSlotViews icon3View,
+            out Text iconConditionText);
 
         Text clearText = CreateText(canvas.transform, "ClearText", UIManager.ClearMessage, 36, new Color(0.98f, 0.92f, 0.30f, 1f),
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1080f, 420f));
@@ -499,7 +511,23 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         gameOverText.gameObject.SetActive(false);
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
-        uiManager.Configure(livesText, stageNameText, scoreText, clearText, gameOverText, icon1Text, icon2Text, icon3Text);
+        uiManager.Configure(
+            livesText,
+            stageNameText,
+            scoreText,
+            clearText,
+            gameOverText,
+            icon1View.LabelText,
+            icon2View.LabelText,
+            icon3View.LabelText);
+        uiManager.ConfigureStageIconImages(
+            icon1View.FillImage,
+            icon2View.FillImage,
+            icon3View.FillImage,
+            icon1View.BorderImage,
+            icon2View.BorderImage,
+            icon3View.BorderImage,
+            iconConditionText);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
         gameManager.ConfigureStageIcons(settings.Icon1Label, settings.Icon2Label, settings.Icon3Label, settings.IconScoreTarget);
         gameManager.ConfigureBallSpawning(
@@ -971,28 +999,71 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         CreatePanelBorder(rightPanel, "RightIconPanelBorder", borderColor, 2f);
     }
 
-    private static void CreateIconPanelContents(Transform rightPanel, out Text icon1Text, out Text icon2Text, out Text icon3Text)
+    private static void CreateIconPanelContents(
+        Transform rightPanel,
+        out IconSlotViews icon1View,
+        out IconSlotViews icon2View,
+        out IconSlotViews icon3View,
+        out Text iconConditionText)
     {
         CreateText(rightPanel, "IconTitleText", "ICON", 34, new Color(0.94f, 0.97f, 1f, 1f),
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(300f, 58f), new Vector2(0.5f, 1f));
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(300f, 58f), new Vector2(0.5f, 1f));
 
-        icon1Text = CreateIconSlot(rightPanel, "IconSlot_1", -130f);
-        icon2Text = CreateIconSlot(rightPanel, "IconSlot_2", -250f);
-        icon3Text = CreateIconSlot(rightPanel, "IconSlot_3", -370f);
+        icon1View = CreateIconSlot(rightPanel, "IconSlot_1", new Vector2(0f, -165f));
+        icon2View = CreateIconSlot(rightPanel, "IconSlot_2", new Vector2(-86f, -320f));
+        icon3View = CreateIconSlot(rightPanel, "IconSlot_3", new Vector2(86f, -320f));
+
+        iconConditionText = CreateText(rightPanel, "IconConditionText", "C: Clear\nL: Life 1+\nS: Score",
+            22, new Color(0.90f, 0.95f, 1f, 0.92f),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -465f), new Vector2(330f, 120f),
+            new Vector2(0.5f, 1f), TextAnchor.MiddleLeft);
     }
 
-    private static Text CreateIconSlot(Transform parent, string name, float topOffset)
+    private static IconSlotViews CreateIconSlot(Transform parent, string name, Vector2 anchoredPosition)
     {
-        RectTransform slot = CreatePanel(parent, name,
-            new Vector2(0.5f, 1f),
-            new Vector2(0.5f, 1f),
-            new Color(1f, 1f, 1f, 0.035f),
-            new Vector2(0f, topOffset),
-            new Vector2(92f, 92f),
-            new Vector2(0.5f, 1f));
-        CreatePanelBorder(slot, $"{name}_Border", new Color(0.86f, 0.93f, 1f, 0.45f), 2f);
-        return CreateText(slot, $"{name}_Text", "[-]", 38, new Color(0.86f, 0.93f, 1f, 0.58f),
+        GameObject slotObject = new GameObject(name, typeof(RectTransform));
+        slotObject.transform.SetParent(parent, false);
+
+        RectTransform slot = slotObject.GetComponent<RectTransform>();
+        slot.anchorMin = new Vector2(0.5f, 1f);
+        slot.anchorMax = new Vector2(0.5f, 1f);
+        slot.pivot = new Vector2(0.5f, 0.5f);
+        slot.anchoredPosition = anchoredPosition;
+        slot.sizeDelta = new Vector2(132f, 132f);
+
+        Image borderImage = CreateCircleImage(slot, $"{name}_BorderCircle", new Vector2(132f, 132f), new Color(0.70f, 0.76f, 0.82f, 0.55f));
+        Image fillImage = CreateCircleImage(slot, $"{name}_FillCircle", new Vector2(118f, 118f), new Color(0.38f, 0.42f, 0.48f, 0.42f));
+        Text labelText = CreateText(slot, $"{name}_Text", "-", 56, new Color(0.78f, 0.84f, 0.90f, 0.85f),
             new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
+        labelText.fontStyle = FontStyle.Bold;
+
+        return new IconSlotViews
+        {
+            LabelText = labelText,
+            FillImage = fillImage,
+            BorderImage = borderImage
+        };
+    }
+
+    private static Image CreateCircleImage(Transform parent, string name, Vector2 sizeDelta, Color color)
+    {
+        GameObject imageObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        imageObject.transform.SetParent(parent, false);
+
+        RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
+        rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        rectTransform.anchoredPosition = Vector2.zero;
+        rectTransform.sizeDelta = sizeDelta;
+
+        Image image = imageObject.GetComponent<Image>();
+        image.sprite = ballSprite;
+        image.preserveAspect = true;
+        image.color = color;
+        image.raycastTarget = false;
+
+        return image;
     }
 
     private static RectTransform CreatePanel(

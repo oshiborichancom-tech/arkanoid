@@ -17,14 +17,27 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Text icon1Text;
     [SerializeField] private Text icon2Text;
     [SerializeField] private Text icon3Text;
+    [SerializeField] private Image icon1FillImage;
+    [SerializeField] private Image icon2FillImage;
+    [SerializeField] private Image icon3FillImage;
+    [SerializeField] private Image icon1BorderImage;
+    [SerializeField] private Image icon2BorderImage;
+    [SerializeField] private Image icon3BorderImage;
+    [SerializeField] private Text iconConditionText;
     [SerializeField] private string livesFormat = "LIFE\n{0}";
     [SerializeField] private string lifeHeartSymbol = "♥";
     [SerializeField] private string lifeHeartSeparator = " ";
     [SerializeField] private string emptyLivesSymbol = "-";
     [SerializeField] private string stageNameFormat = "STAGE: {0}";
     [SerializeField] private string scoreFormat = "SCORE: {0}";
-    [SerializeField] private Color acquiredIconColor = new Color(0.98f, 0.92f, 0.30f, 1f);
-    [SerializeField] private Color lockedIconColor = new Color(0.86f, 0.93f, 1f, 0.58f);
+    [SerializeField] private Color acquiredIconColor = new Color(0.04f, 0.08f, 0.13f, 1f);
+    [SerializeField] private Color lockedIconColor = new Color(0.78f, 0.84f, 0.90f, 0.85f);
+    [SerializeField] private Color lockedIconFillColor = new Color(0.38f, 0.42f, 0.48f, 0.42f);
+    [SerializeField] private Color clearIconFillColor = new Color(0.63f, 0.82f, 1f, 0.92f);
+    [SerializeField] private Color lifeIconFillColor = new Color(0.70f, 0.88f, 0.62f, 0.92f);
+    [SerializeField] private Color scoreIconFillColor = new Color(1f, 0.88f, 0.42f, 0.92f);
+    [SerializeField] private Color acquiredIconBorderColor = new Color(0.95f, 0.98f, 1f, 0.95f);
+    [SerializeField] private Color lockedIconBorderColor = new Color(0.70f, 0.76f, 0.82f, 0.55f);
 
     public void Configure(Text lives, Text stageName, Text clear, Text gameOver)
     {
@@ -61,6 +74,24 @@ public class UIManager : MonoBehaviour
         icon3Text = icon3;
     }
 
+    public void ConfigureStageIconImages(
+        Image icon1Fill,
+        Image icon2Fill,
+        Image icon3Fill,
+        Image icon1Border,
+        Image icon2Border,
+        Image icon3Border,
+        Text conditionText)
+    {
+        icon1FillImage = icon1Fill;
+        icon2FillImage = icon2Fill;
+        icon3FillImage = icon3Fill;
+        icon1BorderImage = icon1Border;
+        icon2BorderImage = icon2Border;
+        icon3BorderImage = icon3Border;
+        iconConditionText = conditionText;
+    }
+
     public void SetLives(int lives)
     {
         if (livesText != null)
@@ -87,9 +118,15 @@ public class UIManager : MonoBehaviour
 
     public void SetStageIcons(string icon1, bool got1, string icon2, bool got2, string icon3, bool got3)
     {
-        SetStageIcon(icon1Text, icon1, got1);
-        SetStageIcon(icon2Text, icon2, got2);
-        SetStageIcon(icon3Text, icon3, got3);
+        SetStageIcons(icon1, got1, icon2, got2, icon3, got3, 0);
+    }
+
+    public void SetStageIcons(string icon1, bool got1, string icon2, bool got2, string icon3, bool got3, int scoreTarget)
+    {
+        SetStageIcon(icon1Text, icon1FillImage, icon1BorderImage, icon1, got1, clearIconFillColor);
+        SetStageIcon(icon2Text, icon2FillImage, icon2BorderImage, icon2, got2, lifeIconFillColor);
+        SetStageIcon(icon3Text, icon3FillImage, icon3BorderImage, icon3, got3, scoreIconFillColor);
+        SetIconConditionText(icon1, icon2, icon3, scoreTarget);
     }
 
     public void ShowPlaying()
@@ -182,15 +219,38 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void SetStageIcon(Text text, string label, bool acquired)
+    private void SetStageIcon(Text text, Image fillImage, Image borderImage, string label, bool acquired, Color acquiredFillColor)
     {
-        if (text == null)
+        if (text != null)
+        {
+            text.text = acquired ? GetSafeIconLabel(label) : "-";
+            text.color = acquired ? acquiredIconColor : lockedIconColor;
+        }
+
+        if (fillImage != null)
+        {
+            fillImage.color = acquired ? acquiredFillColor : lockedIconFillColor;
+        }
+
+        if (borderImage != null)
+        {
+            borderImage.color = acquired ? acquiredIconBorderColor : lockedIconBorderColor;
+        }
+    }
+
+    private void SetIconConditionText(string icon1, string icon2, string icon3, int scoreTarget)
+    {
+        if (iconConditionText == null)
         {
             return;
         }
 
-        text.text = acquired ? $"[{GetSafeIconLabel(label)}]" : "[-]";
-        text.color = acquired ? acquiredIconColor : lockedIconColor;
+        string clearLabel = GetSafeIconLabel(icon1);
+        string lifeLabel = GetSafeIconLabel(icon2);
+        string scoreLabel = GetSafeIconLabel(icon3);
+        int safeScoreTarget = Mathf.Max(0, scoreTarget);
+
+        iconConditionText.text = $"{clearLabel}: Clear\n{lifeLabel}: Life 1+\n{scoreLabel}: Score {safeScoreTarget}+";
     }
 
     private string BuildLivesText(int lives)
