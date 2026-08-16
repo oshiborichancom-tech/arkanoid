@@ -23,12 +23,16 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const string DefaultIcon2Description = "No Miss";
     private const string DefaultIcon3Description = "Score";
     private const int DefaultIconScoreTarget = 3000;
-    private const float StageSelectButtonSpacing = 118f;
-    private const float StageSelectButtonWidth = 380f;
-    private const float StageSelectButtonHeight = 108f;
-    private const float StageSelectScrollViewWidth = 560f;
+    private const float StageSelectButtonSpacing = 148f;
+    private const float StageSelectButtonWidth = 440f;
+    private const float StageSelectButtonHeight = 132f;
+    private const float StageSelectScrollViewWidth = 640f;
     private const float StageSelectScrollViewHeight = 560f;
     private const float StageSelectContentPadding = 18f;
+    private const string TitleSceneTitle = "NEON BREAK";
+    private const string TitleSceneSubtitle = "Break the blocks, reveal the secret.";
+    private const string TitleSceneDescription = "Clear stages and collect all icons.";
+    private const string TitleSceneStartLabel = "START GAME";
     private const int BackgroundSortingOrder = -20;
     private static readonly Color ThemeBackground = new Color32(0x12, 0x09, 0x14, 0xFF);
     private static readonly Color ThemeDarkPurple = new Color32(0x24, 0x10, 0x2F, 0xFF);
@@ -376,12 +380,48 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
 
-        Text titleText = CreateText(canvas.transform, "TitleText", "ARKANOID", 76, ThemePink,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 170f), new Vector2(760f, 120f));
+        RectTransform frame = CreatePanel(canvas.transform, "TitleNeonFrame",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), WithAlpha(ThemePanel, 0.74f),
+            new Vector2(0f, 42f), new Vector2(1060f, 560f));
+        CreatePanelBorder(frame, "TitleNeonFrameBorder", WithAlpha(ThemePink, 0.72f), 3f);
+
+        CreatePanel(frame, "TitleAccentLineTop", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), WithAlpha(ThemeCyan, 0.78f),
+            new Vector2(0f, -62f), new Vector2(520f, 4f));
+        CreatePanel(frame, "TitleAccentLineBottom", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), WithAlpha(ThemePink, 0.72f),
+            new Vector2(0f, 70f), new Vector2(640f, 4f));
+        CreatePanel(frame, "TitleAccentLeft", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), WithAlpha(ThemePink, 0.42f),
+            new Vector2(46f, 0f), new Vector2(4f, 360f));
+        CreatePanel(frame, "TitleAccentRight", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), WithAlpha(ThemeCyan, 0.38f),
+            new Vector2(-46f, 0f), new Vector2(4f, 360f));
+
+        Text titleGlowText = CreateText(frame, "TitleGlowText", TitleSceneTitle, 104, WithAlpha(ThemePink, 0.20f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(6f, 118f), new Vector2(980f, 150f));
+        titleGlowText.fontStyle = FontStyle.Bold;
+
+        Text titleShadowText = CreateText(frame, "TitleShadowText", TitleSceneTitle, 88, WithAlpha(ThemeCyan, 0.38f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(3f, 112f), new Vector2(980f, 142f));
+        titleShadowText.fontStyle = FontStyle.Bold;
+
+        Text titleText = CreateText(frame, "TitleText", TitleSceneTitle, 88, ThemePink,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 116f), new Vector2(980f, 142f));
         titleText.fontStyle = FontStyle.Bold;
 
-        Button startButton = CreateButton(canvas.transform, "StartButton", "Start",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(320f, 90f));
+        Text subtitleText = CreateText(frame, "SubtitleText", TitleSceneSubtitle, 30, ThemeText,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 32f), new Vector2(860f, 64f));
+        subtitleText.fontStyle = FontStyle.Bold;
+
+        Button startButton = CreateButton(frame, "StartButton", TitleSceneStartLabel,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -92f), new Vector2(360f, 88f));
+        Text startButtonText = startButton.transform.Find("Text")?.GetComponent<Text>();
+        if (startButtonText != null)
+        {
+            startButtonText.fontSize = 34;
+            startButtonText.color = ThemePink;
+        }
+
+        CreateText(frame, "TitleDescriptionText", TitleSceneDescription, 24, WithAlpha(ThemeCyan, 0.92f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -178f), new Vector2(860f, 54f));
+
         startButton.onClick.AddListener(loader.LoadStageSelect);
     }
 
@@ -392,8 +432,16 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
 
-        Text titleText = CreateText(canvas.transform, "StageSelectTitle", "Stage Select", 64, ThemePink,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 400f), new Vector2(760f, 100f));
+        Text titleGlowText = CreateText(canvas.transform, "StageSelectTitleGlow", "STAGE SELECT", 70, WithAlpha(ThemePink, 0.20f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(4f, 404f), new Vector2(820f, 108f));
+        titleGlowText.fontStyle = FontStyle.Bold;
+
+        Text titleShadowText = CreateText(canvas.transform, "StageSelectTitleShadow", "STAGE SELECT", 60, WithAlpha(ThemeCyan, 0.34f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(3f, 398f), new Vector2(820f, 102f));
+        titleShadowText.fontStyle = FontStyle.Bold;
+
+        Text titleText = CreateText(canvas.transform, "StageSelectTitle", "STAGE SELECT", 60, ThemePink,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 400f), new Vector2(820f, 102f));
         titleText.fontStyle = FontStyle.Bold;
 
         RectTransform stageListContent = CreateStageSelectScrollView(canvas.transform);
@@ -458,7 +506,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             return "Stage";
         }
 
-        return isUnlocked ? stageData.StageName : $"{stageData.StageName} (Locked)";
+        return stageData.StageName;
     }
 
     private static RectTransform CreateStageSelectScrollView(Transform parent)
@@ -598,25 +646,57 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         if (titleText != null)
         {
             RectTransform titleTransform = titleText.GetComponent<RectTransform>();
-            titleTransform.anchorMin = new Vector2(0f, 0.58f);
+            titleTransform.anchorMin = new Vector2(0f, 0.60f);
             titleTransform.anchorMax = new Vector2(1f, 1f);
             titleTransform.anchoredPosition = Vector2.zero;
             titleTransform.sizeDelta = Vector2.zero;
-            titleText.fontSize = 27;
+            titleTransform.offsetMin = new Vector2(54f, titleTransform.offsetMin.y);
+            titleTransform.offsetMax = new Vector2(-26f, titleTransform.offsetMax.y);
+            titleText.fontSize = 30;
+            titleText.alignment = TextAnchor.MiddleLeft;
         }
+
+        Image cardBorderImage = CreatePanel(stageButton.transform, "CardBorder",
+            new Vector2(0f, 0f), new Vector2(0f, 1f), WithAlpha(ThemePink, 0.90f),
+            Vector2.zero, new Vector2(7f, 0f), new Vector2(0f, 0.5f)).GetComponent<Image>();
+
+        Text lockedText = CreateText(stageButton.transform, "LockedText", string.Empty,
+            22, WithAlpha(ThemeLocked, 0.96f),
+            new Vector2(0f, 0.42f), new Vector2(1f, 0.60f), Vector2.zero, Vector2.zero,
+            null, TextAnchor.MiddleLeft);
+        RectTransform lockedTransform = lockedText.GetComponent<RectTransform>();
+        lockedTransform.offsetMin = new Vector2(54f, lockedTransform.offsetMin.y);
+        lockedTransform.offsetMax = new Vector2(-26f, lockedTransform.offsetMax.y);
+        lockedText.fontStyle = FontStyle.Bold;
 
         Text iconStatusText = CreateText(stageButton.transform, "IconStatusText", "[-] [-] [-]",
             21, WithAlpha(ThemeText, 0.96f),
-            new Vector2(0f, 0.26f), new Vector2(1f, 0.62f), Vector2.zero, Vector2.zero);
+            new Vector2(0f, 0.18f), new Vector2(1f, 0.44f), Vector2.zero, Vector2.zero,
+            null, TextAnchor.MiddleLeft);
+        RectTransform iconStatusTransform = iconStatusText.GetComponent<RectTransform>();
+        iconStatusTransform.offsetMin = new Vector2(54f, iconStatusTransform.offsetMin.y);
+        iconStatusTransform.offsetMax = new Vector2(-26f, iconStatusTransform.offsetMax.y);
         iconStatusText.fontStyle = FontStyle.Bold;
 
         Text perfectText = CreateText(stageButton.transform, "PerfectText", string.Empty,
-            20, ThemePerfect,
-            new Vector2(0f, 0f), new Vector2(1f, 0.28f), Vector2.zero, Vector2.zero);
+            22, ThemePerfect,
+            new Vector2(0f, 0f), new Vector2(1f, 0.22f), Vector2.zero, Vector2.zero,
+            null, TextAnchor.MiddleLeft);
+        RectTransform perfectTransform = perfectText.GetComponent<RectTransform>();
+        perfectTransform.offsetMin = new Vector2(54f, perfectTransform.offsetMin.y);
+        perfectTransform.offsetMax = new Vector2(-26f, perfectTransform.offsetMax.y);
         perfectText.fontStyle = FontStyle.Bold;
 
         StageSelectButton stageSelectButton = stageButton.gameObject.AddComponent<StageSelectButton>();
-        stageSelectButton.Configure(data, isUnlocked, iconStatusText, perfectText);
+        stageSelectButton.Configure(
+            data,
+            isUnlocked,
+            stageButton.GetComponent<Image>(),
+            cardBorderImage,
+            titleText,
+            lockedText,
+            iconStatusText,
+            perfectText);
         stageButton.onClick.AddListener(stageSelectButton.SelectStageAndLoadGame);
     }
 

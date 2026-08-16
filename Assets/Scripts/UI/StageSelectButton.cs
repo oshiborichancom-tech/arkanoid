@@ -3,8 +3,22 @@ using UnityEngine.UI;
 
 public class StageSelectButton : MonoBehaviour
 {
+    private static readonly Color CardUnlockedColor = new Color32(0x24, 0x10, 0x2F, 0xF2);
+    private static readonly Color CardLockedColor = new Color32(0x30, 0x28, 0x38, 0xD8);
+    private static readonly Color BorderUnlockedColor = new Color32(0xFF, 0x4F, 0xD8, 0xE6);
+    private static readonly Color BorderLockedColor = new Color32(0x55, 0x50, 0x5A, 0xD8);
+    private static readonly Color StageUnlockedTextColor = new Color32(0xFF, 0xD6, 0xF5, 0xFF);
+    private static readonly Color StageLockedTextColor = new Color32(0x9A, 0x90, 0xA0, 0xFF);
+    private static readonly Color IconUnlockedTextColor = Color.white;
+    private static readonly Color IconLockedTextColor = new Color32(0x9A, 0x90, 0xA0, 0xFF);
+    private static readonly Color PerfectTextColor = new Color32(0xFF, 0xD8, 0x66, 0xFF);
+
     [SerializeField] private StageData stageData;
     [SerializeField] private bool isUnlocked = true;
+    [SerializeField] private Image cardBackgroundImage;
+    [SerializeField] private Image cardBorderImage;
+    [SerializeField] private Text stageNameText;
+    [SerializeField] private Text lockedText;
     [SerializeField] private Text iconStatusText;
     [SerializeField] private Text perfectText;
 
@@ -15,18 +29,35 @@ public class StageSelectButton : MonoBehaviour
 
     public void Configure(StageData data, bool unlocked)
     {
-        Configure(data, unlocked, iconStatusText, perfectText);
+        Configure(data, unlocked, cardBackgroundImage, cardBorderImage, stageNameText, lockedText, iconStatusText, perfectText);
     }
 
     public void Configure(StageData data, bool unlocked, Text iconText)
     {
-        Configure(data, unlocked, iconText, perfectText);
+        Configure(data, unlocked, cardBackgroundImage, cardBorderImage, stageNameText, lockedText, iconText, perfectText);
     }
 
     public void Configure(StageData data, bool unlocked, Text iconText, Text perfectLabel)
     {
+        Configure(data, unlocked, cardBackgroundImage, cardBorderImage, stageNameText, lockedText, iconText, perfectLabel);
+    }
+
+    public void Configure(
+        StageData data,
+        bool unlocked,
+        Image backgroundImage,
+        Image borderImage,
+        Text stageText,
+        Text lockedLabel,
+        Text iconText,
+        Text perfectLabel)
+    {
         stageData = data;
         isUnlocked = unlocked;
+        cardBackgroundImage = backgroundImage != null ? backgroundImage : cardBackgroundImage;
+        cardBorderImage = borderImage != null ? borderImage : cardBorderImage;
+        stageNameText = stageText != null ? stageText : stageNameText;
+        lockedText = lockedLabel != null ? lockedLabel : lockedText;
         iconStatusText = iconText != null ? iconText : iconStatusText;
         perfectText = perfectLabel != null ? perfectLabel : perfectText;
 
@@ -36,6 +67,7 @@ public class StageSelectButton : MonoBehaviour
             button.interactable = isUnlocked;
         }
 
+        ApplyCardStyle(false);
         RefreshIconStatus();
     }
 
@@ -73,13 +105,24 @@ public class StageSelectButton : MonoBehaviour
         if (statusText != null)
         {
             statusText.text = $"{BuildIconStatus(icon1, got1)} {BuildIconStatus(icon2, got2)} {BuildIconStatus(icon3, got3)}";
+            statusText.color = isUnlocked ? IconUnlockedTextColor : IconLockedTextColor;
+        }
+
+        Text lockedLabel = GetLockedText();
+        if (lockedLabel != null)
+        {
+            lockedLabel.text = isUnlocked ? string.Empty : "LOCKED";
+            lockedLabel.color = StageLockedTextColor;
         }
 
         Text perfectLabel = GetPerfectText();
         if (perfectLabel != null)
         {
             perfectLabel.text = showPerfect ? "PERFECT" : string.Empty;
+            perfectLabel.color = PerfectTextColor;
         }
+
+        ApplyCardStyle(showPerfect);
     }
 
     public void SelectStageAndLoadGame()
@@ -102,6 +145,65 @@ public class StageSelectButton : MonoBehaviour
         }
 
         SceneLoader.LoadScene(SceneLoader.GameSceneName);
+    }
+
+    private Image GetCardBackgroundImage()
+    {
+        if (cardBackgroundImage != null)
+        {
+            return cardBackgroundImage;
+        }
+
+        cardBackgroundImage = GetComponent<Image>();
+        return cardBackgroundImage;
+    }
+
+    private Image GetCardBorderImage()
+    {
+        if (cardBorderImage != null)
+        {
+            return cardBorderImage;
+        }
+
+        Transform found = transform.Find("CardBorder");
+        if (found != null)
+        {
+            cardBorderImage = found.GetComponent<Image>();
+        }
+
+        return cardBorderImage;
+    }
+
+    private Text GetStageNameText()
+    {
+        if (stageNameText != null)
+        {
+            return stageNameText;
+        }
+
+        Transform found = transform.Find("Text");
+        if (found != null)
+        {
+            stageNameText = found.GetComponent<Text>();
+        }
+
+        return stageNameText;
+    }
+
+    private Text GetLockedText()
+    {
+        if (lockedText != null)
+        {
+            return lockedText;
+        }
+
+        Transform found = transform.Find("LockedText");
+        if (found != null)
+        {
+            lockedText = found.GetComponent<Text>();
+        }
+
+        return lockedText;
     }
 
     private Text GetIconStatusText()
@@ -134,6 +236,27 @@ public class StageSelectButton : MonoBehaviour
         }
 
         return perfectText;
+    }
+
+    private void ApplyCardStyle(bool showPerfect)
+    {
+        Image background = GetCardBackgroundImage();
+        if (background != null)
+        {
+            background.color = isUnlocked ? CardUnlockedColor : CardLockedColor;
+        }
+
+        Image border = GetCardBorderImage();
+        if (border != null)
+        {
+            border.color = showPerfect ? PerfectTextColor : isUnlocked ? BorderUnlockedColor : BorderLockedColor;
+        }
+
+        Text stageText = GetStageNameText();
+        if (stageText != null)
+        {
+            stageText.color = isUnlocked ? StageUnlockedTextColor : StageLockedTextColor;
+        }
     }
 
     private static string BuildIconStatus(string label, bool acquired)
