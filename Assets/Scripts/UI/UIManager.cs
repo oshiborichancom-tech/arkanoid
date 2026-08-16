@@ -8,12 +8,19 @@ public class UIManager : MonoBehaviour
     public const string ClearMessage = "CLEAR!\nNext stage unlocked.\nPress R to retry\nor select another stage.";
     public const string FinalClearMessage = "CLEAR!\nAll stages cleared.\nPress R to retry\nor return to Stage Select.";
     public const string GameOverMessage = "GAME OVER\nPress R to retry\nor return to Stage Select.";
+    private const string PerfectClearMessage = "All target icons achieved!";
 
     [SerializeField] private Text livesText;
     [SerializeField] private Text stageNameText;
     [SerializeField] private Text scoreText;
     [SerializeField] private Text clearText;
     [SerializeField] private Text gameOverText;
+    [SerializeField] private Text clearResultTitleText;
+    [SerializeField] private Text clearResultSubText;
+    [SerializeField] private Text clearResultBodyText;
+    [SerializeField] private Text gameOverResultTitleText;
+    [SerializeField] private Text gameOverResultSubText;
+    [SerializeField] private Text gameOverResultBodyText;
     [SerializeField] private Image clearResultBackground;
     [SerializeField] private Image gameOverResultBackground;
     [SerializeField] private Text icon1Text;
@@ -40,6 +47,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Color scoreIconFillColor = new Color(1f, 0.85f, 0.40f, 0.94f);
     [SerializeField] private Color acquiredIconBorderColor = new Color(1f, 0.84f, 0.96f, 0.98f);
     [SerializeField] private Color lockedIconBorderColor = new Color(0.33f, 0.31f, 0.35f, 0.82f);
+    [SerializeField] private Color clearResultTitleColor = new Color(0.39f, 0.96f, 1f, 1f);
+    [SerializeField] private Color perfectClearResultTitleColor = new Color(1f, 0.85f, 0.40f, 1f);
+    [SerializeField] private Color gameOverResultTitleColor = new Color(1f, 0.36f, 0.66f, 1f);
+    [SerializeField] private Color resultSubTextColor = new Color(1f, 0.31f, 0.85f, 1f);
+    [SerializeField] private Color resultBodyTextColor = new Color(1f, 0.84f, 0.96f, 1f);
 
     public void Configure(Text lives, Text stageName, Text clear, Text gameOver)
     {
@@ -98,6 +110,22 @@ public class UIManager : MonoBehaviour
     {
         clearResultBackground = clearBackground;
         gameOverResultBackground = gameOverBackground;
+    }
+
+    public void ConfigureResultTexts(
+        Text clearTitle,
+        Text clearSub,
+        Text clearBody,
+        Text gameOverTitle,
+        Text gameOverSub,
+        Text gameOverBody)
+    {
+        clearResultTitleText = clearTitle;
+        clearResultSubText = clearSub;
+        clearResultBodyText = clearBody;
+        gameOverResultTitleText = gameOverTitle;
+        gameOverResultSubText = gameOverSub;
+        gameOverResultBodyText = gameOverBody;
     }
 
     public void ConfigureLifeHearts(string heartSymbol, string separator = null, string emptySymbol = null)
@@ -200,8 +228,12 @@ public class UIManager : MonoBehaviour
 
     public void ShowClear(bool unlockedNextStage, bool isFinalStage)
     {
-        SetText(clearText, BuildClearMessage(unlockedNextStage, isFinalStage));
-        SetClearResultActive(true);
+        string body = BuildClearActionMessage(unlockedNextStage, isFinalStage);
+        ShowClearResult(
+            false,
+            string.Empty,
+            body,
+            BuildClearMessage(unlockedNextStage, isFinalStage));
         SetGameOverResultActive(false);
     }
 
@@ -225,15 +257,26 @@ public class UIManager : MonoBehaviour
         int lives,
         string rank)
     {
-        SetText(clearText, BuildClearMessage(
+        string body = BuildClearBody(
             unlockedNextStage,
             isFinalStage,
             score,
             destroyedBlocks,
             totalBlocks,
             lives,
-            rank));
-        SetClearResultActive(true);
+            rank);
+        ShowClearResult(
+            false,
+            string.Empty,
+            body,
+            BuildClearMessage(
+                unlockedNextStage,
+                isFinalStage,
+                score,
+                destroyedBlocks,
+                totalBlocks,
+                lives,
+                rank));
         SetGameOverResultActive(false);
     }
 
@@ -252,7 +295,8 @@ public class UIManager : MonoBehaviour
         string scoreIconLabel,
         bool achievedScoreIcon)
     {
-        SetText(clearText, BuildClearMessage(
+        bool isPerfectClear = achievedClearIcon && achievedNoMissIcon && achievedScoreIcon;
+        ShowClear(
             unlockedNextStage,
             isFinalStage,
             score,
@@ -265,16 +309,66 @@ public class UIManager : MonoBehaviour
             noMissIconLabel,
             achievedNoMissIcon,
             scoreIconLabel,
-            achievedScoreIcon));
-        SetClearResultActive(true);
+            achievedScoreIcon,
+            isPerfectClear);
+    }
+
+    public void ShowClear(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank,
+        string clearIconLabel,
+        bool achievedClearIcon,
+        string noMissIconLabel,
+        bool achievedNoMissIcon,
+        string scoreIconLabel,
+        bool achievedScoreIcon,
+        bool isPerfectClear)
+    {
+        string body = BuildClearBody(
+            unlockedNextStage,
+            isFinalStage,
+            score,
+            destroyedBlocks,
+            totalBlocks,
+            lives,
+            rank,
+            clearIconLabel,
+            achievedClearIcon,
+            noMissIconLabel,
+            achievedNoMissIcon,
+            scoreIconLabel,
+            achievedScoreIcon);
+        ShowClearResult(
+            isPerfectClear,
+            isPerfectClear ? PerfectClearMessage : string.Empty,
+            body,
+            BuildClearMessage(
+                unlockedNextStage,
+                isFinalStage,
+                score,
+                destroyedBlocks,
+                totalBlocks,
+                lives,
+                rank,
+                clearIconLabel,
+                achievedClearIcon,
+                noMissIconLabel,
+                achievedNoMissIcon,
+                scoreIconLabel,
+                achievedScoreIcon,
+                isPerfectClear));
         SetGameOverResultActive(false);
     }
 
     public void ShowGameOver()
     {
         SetClearResultActive(false);
-        SetText(gameOverText, GameOverMessage);
-        SetGameOverResultActive(true);
+        ShowGameOverResult("Press R to retry\nor return to Stage Select.", GameOverMessage);
     }
 
     public void ShowGameOver(int destroyedBlocks, int totalBlocks, int lives, string rank)
@@ -285,8 +379,9 @@ public class UIManager : MonoBehaviour
     public void ShowGameOver(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
         SetClearResultActive(false);
-        SetText(gameOverText, BuildGameOverMessage(score, destroyedBlocks, totalBlocks, lives, rank));
-        SetGameOverResultActive(true);
+        ShowGameOverResult(
+            BuildGameOverBody(score, destroyedBlocks, totalBlocks, lives, rank),
+            BuildGameOverMessage(score, destroyedBlocks, totalBlocks, lives, rank));
     }
 
     public void HideResult()
@@ -300,6 +395,15 @@ public class UIManager : MonoBehaviour
         if (text != null)
         {
             text.text = value;
+        }
+    }
+
+    private static void SetText(Text text, string value, Color color)
+    {
+        if (text != null)
+        {
+            text.text = value;
+            text.color = color;
         }
     }
 
@@ -323,12 +427,86 @@ public class UIManager : MonoBehaviour
     {
         SetActive(clearResultBackground, isActive);
         SetActive(clearText, isActive);
+        SetActive(clearResultTitleText, isActive);
+        SetActive(clearResultSubText, isActive);
+        SetActive(clearResultBodyText, isActive);
     }
 
     private void SetGameOverResultActive(bool isActive)
     {
         SetActive(gameOverResultBackground, isActive);
         SetActive(gameOverText, isActive);
+        SetActive(gameOverResultTitleText, isActive);
+        SetActive(gameOverResultSubText, isActive);
+        SetActive(gameOverResultBodyText, isActive);
+    }
+
+    private void ShowClearResult(bool isPerfectClear, string subText, string bodyText, string legacyText)
+    {
+        Color titleColor = isPerfectClear ? perfectClearResultTitleColor : clearResultTitleColor;
+        ShowResult(
+            clearResultBackground,
+            clearResultTitleText,
+            clearResultSubText,
+            clearResultBodyText,
+            clearText,
+            BuildClearHeading(isPerfectClear),
+            subText,
+            bodyText,
+            legacyText,
+            titleColor);
+    }
+
+    private void ShowGameOverResult(string bodyText, string legacyText)
+    {
+        ShowResult(
+            gameOverResultBackground,
+            gameOverResultTitleText,
+            gameOverResultSubText,
+            gameOverResultBodyText,
+            gameOverText,
+            "GAME OVER",
+            string.Empty,
+            bodyText,
+            legacyText,
+            gameOverResultTitleColor);
+    }
+
+    private void ShowResult(
+        Image background,
+        Text titleText,
+        Text subText,
+        Text bodyText,
+        Text legacyText,
+        string title,
+        string subtitle,
+        string body,
+        string legacyBody,
+        Color titleColor)
+    {
+        SetActive(background, true);
+
+        bool hasSplitText = titleText != null && bodyText != null;
+        if (hasSplitText)
+        {
+            SetActive(legacyText, false);
+            SetText(titleText, title, titleColor);
+            SetActive(titleText, true);
+
+            bool hasSubtitle = !string.IsNullOrWhiteSpace(subtitle);
+            SetText(subText, subtitle, resultSubTextColor);
+            SetActive(subText, hasSubtitle);
+
+            SetText(bodyText, body, resultBodyTextColor);
+            SetActive(bodyText, true);
+            return;
+        }
+
+        SetText(legacyText, legacyBody);
+        SetActive(legacyText, true);
+        SetActive(titleText, false);
+        SetActive(subText, false);
+        SetActive(bodyText, false);
     }
 
     private void SetStageIcon(Text text, Image fillImage, Image borderImage, string label, bool acquired, Color acquiredFillColor)
@@ -453,10 +631,69 @@ public class UIManager : MonoBehaviour
         int lives,
         string rank)
     {
-        return $"CLEAR!\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
+        return $"{BuildClearHeading(false)}\n{BuildClearBody(score, destroyedBlocks, totalBlocks, lives, rank, unlockedNextStage, isFinalStage)}";
     }
 
     private static string BuildClearMessage(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank,
+        string clearIconLabel,
+        bool achievedClearIcon,
+        string noMissIconLabel,
+        bool achievedNoMissIcon,
+        string scoreIconLabel,
+        bool achievedScoreIcon,
+        bool isPerfectClear)
+    {
+        string perfectLine = isPerfectClear ? $"\n{PerfectClearMessage}" : string.Empty;
+        return $"{BuildClearHeading(isPerfectClear)}{perfectLine}\n{BuildClearBody(unlockedNextStage, isFinalStage, score, destroyedBlocks, totalBlocks, lives, rank, clearIconLabel, achievedClearIcon, noMissIconLabel, achievedNoMissIcon, scoreIconLabel, achievedScoreIcon)}";
+    }
+
+    private static string BuildClearHeading(bool isPerfectClear)
+    {
+        return isPerfectClear ? "PERFECT CLEAR!" : "CLEAR!";
+    }
+
+    private static string BuildGameOverMessage(int destroyedBlocks, int totalBlocks, int lives, string rank)
+    {
+        return BuildGameOverMessage(0, destroyedBlocks, totalBlocks, lives, rank);
+    }
+
+    private static string BuildGameOverMessage(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
+    {
+        return $"GAME OVER\n{BuildGameOverBody(score, destroyedBlocks, totalBlocks, lives, rank)}";
+    }
+
+    private static string BuildClearBody(
+        bool unlockedNextStage,
+        bool isFinalStage,
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank)
+    {
+        return BuildClearBody(score, destroyedBlocks, totalBlocks, lives, rank, unlockedNextStage, isFinalStage);
+    }
+
+    private static string BuildClearBody(
+        int score,
+        int destroyedBlocks,
+        int totalBlocks,
+        int lives,
+        string rank,
+        bool unlockedNextStage,
+        bool isFinalStage)
+    {
+        return $"{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
+    }
+
+    private static string BuildClearBody(
         bool unlockedNextStage,
         bool isFinalStage,
         int score,
@@ -479,17 +716,12 @@ public class UIManager : MonoBehaviour
             scoreIconLabel,
             achievedScoreIcon);
 
-        return $"CLEAR!\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n{achievedIconsLine}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
+        return $"{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n{achievedIconsLine}\n\n{BuildClearActionMessage(unlockedNextStage, isFinalStage)}";
     }
 
-    private static string BuildGameOverMessage(int destroyedBlocks, int totalBlocks, int lives, string rank)
+    private static string BuildGameOverBody(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
-        return BuildGameOverMessage(0, destroyedBlocks, totalBlocks, lives, rank);
-    }
-
-    private static string BuildGameOverMessage(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
-    {
-        return $"GAME OVER\n{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\nPress R to retry\nor return to Stage Select.";
+        return $"{BuildResultLines(score, destroyedBlocks, totalBlocks, lives, rank)}\n\nPress R to retry\nor return to Stage Select.";
     }
 
     private static string BuildResultLines(int destroyedBlocks, int totalBlocks, int lives, string rank)

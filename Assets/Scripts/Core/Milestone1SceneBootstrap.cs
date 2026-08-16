@@ -764,8 +764,26 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             out IconSlotViews icon3View,
             out Text iconConditionText);
 
-        Text clearText = CreateResultText(canvas.transform, "ClearResultPanel", "ClearText", UIManager.ClearMessage, 36, ThemeCyan, out Image clearResultBackground);
-        Text gameOverText = CreateResultText(canvas.transform, "GameOverResultPanel", "GameOverText", UIManager.GameOverMessage, 36, ThemeDanger, out Image gameOverResultBackground);
+        Image clearResultBackground = CreateResultPanel(
+            canvas.transform,
+            "ClearResultPanel",
+            "CLEAR!",
+            string.Empty,
+            "Next stage unlocked.\nPress R to retry\nor select another stage.",
+            ThemeCyan,
+            out Text clearResultTitleText,
+            out Text clearResultSubText,
+            out Text clearResultBodyText);
+        Image gameOverResultBackground = CreateResultPanel(
+            canvas.transform,
+            "GameOverResultPanel",
+            "GAME OVER",
+            string.Empty,
+            "Press R to retry\nor return to Stage Select.",
+            ThemeDanger,
+            out Text gameOverResultTitleText,
+            out Text gameOverResultSubText,
+            out Text gameOverResultBodyText);
         clearResultBackground.gameObject.SetActive(false);
         gameOverResultBackground.gameObject.SetActive(false);
 
@@ -774,8 +792,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             livesText,
             stageNameText,
             scoreText,
-            clearText,
-            gameOverText,
+            null,
+            null,
             icon1View.LabelText,
             icon2View.LabelText,
             icon3View.LabelText);
@@ -790,6 +808,13 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             icon3View.BorderImage,
             iconConditionText);
         uiManager.ConfigureResultBackgrounds(clearResultBackground, gameOverResultBackground);
+        uiManager.ConfigureResultTexts(
+            clearResultTitleText,
+            clearResultSubText,
+            clearResultBodyText,
+            gameOverResultTitleText,
+            gameOverResultSubText,
+            gameOverResultBodyText);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
         gameManager.ConfigureStageIcons(
             settings.Icon1Label,
@@ -1369,19 +1394,21 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         };
     }
 
-    private static Text CreateResultText(
+    private static Image CreateResultPanel(
         Transform parent,
         string panelName,
-        string textName,
-        string text,
-        int fontSize,
-        Color textColor,
-        out Image backgroundImage)
+        string title,
+        string subtitle,
+        string body,
+        Color titleColor,
+        out Text titleText,
+        out Text subText,
+        out Text bodyText)
     {
         RectTransform panel = CreatePanel(parent, panelName,
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), WithAlpha(ThemePanel, 0.90f),
-            new Vector2(0f, 20f), new Vector2(1120f, 460f));
-        backgroundImage = panel.GetComponent<Image>();
+            new Vector2(0f, 20f), new Vector2(1060f, 500f));
+        Image backgroundImage = panel.GetComponent<Image>();
         if (backgroundImage != null)
         {
             backgroundImage.raycastTarget = false;
@@ -1389,10 +1416,25 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         CreatePanelBorder(panel, $"{panelName}Border", WithAlpha(ThemePink, 0.78f), 3f);
 
-        Text resultText = CreateText(panel, textName, text, fontSize, textColor,
-            new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-80f, -64f));
-        resultText.fontStyle = FontStyle.Bold;
-        return resultText;
+        titleText = CreateText(panel, "ResultTitleText", title, 48, titleColor,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(940f, 76f),
+            new Vector2(0.5f, 0.5f));
+        titleText.fontStyle = FontStyle.Bold;
+        titleText.resizeTextForBestFit = true;
+        titleText.resizeTextMinSize = 34;
+        titleText.resizeTextMaxSize = 48;
+
+        subText = CreateText(panel, "ResultSubText", subtitle, 28, ThemePink,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(940f, 44f),
+            new Vector2(0.5f, 0.5f));
+        subText.fontStyle = FontStyle.Bold;
+
+        bodyText = CreateText(panel, "ResultBodyText", body, 30, ThemeText,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -318f), new Vector2(920f, 310f),
+            new Vector2(0.5f, 0.5f), TextAnchor.UpperCenter);
+        bodyText.fontStyle = FontStyle.Bold;
+
+        return backgroundImage;
     }
 
     private static Image CreateCircleImage(Transform parent, string name, Vector2 sizeDelta, Color color)

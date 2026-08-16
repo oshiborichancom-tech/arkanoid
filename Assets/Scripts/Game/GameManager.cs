@@ -384,6 +384,7 @@ public class GameManager : MonoBehaviour
         bool achievedClearIcon = true;
         bool achievedNoMissIcon = missCount == 0;
         bool achievedScoreIcon = currentScore >= iconScoreTarget;
+        bool isPerfectClear = achievedClearIcon && achievedNoMissIcon && achievedScoreIcon;
 
         if (hasNextStage)
         {
@@ -408,7 +409,8 @@ public class GameManager : MonoBehaviour
                 icon2Label,
                 achievedNoMissIcon,
                 icon3Label,
-                achievedScoreIcon);
+                achievedScoreIcon,
+                isPerfectClear);
         }
     }
 
