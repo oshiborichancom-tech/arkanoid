@@ -14,6 +14,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Text scoreText;
     [SerializeField] private Text clearText;
     [SerializeField] private Text gameOverText;
+    [SerializeField] private Image clearResultBackground;
+    [SerializeField] private Image gameOverResultBackground;
     [SerializeField] private Text icon1Text;
     [SerializeField] private Text icon2Text;
     [SerializeField] private Text icon3Text;
@@ -30,14 +32,14 @@ public class UIManager : MonoBehaviour
     [SerializeField] private string emptyLivesSymbol = "-";
     [SerializeField] private string stageNameFormat = "STAGE: {0}";
     [SerializeField] private string scoreFormat = "SCORE: {0}";
-    [SerializeField] private Color acquiredIconColor = new Color(0.04f, 0.08f, 0.13f, 1f);
-    [SerializeField] private Color lockedIconColor = new Color(0.78f, 0.84f, 0.90f, 0.85f);
-    [SerializeField] private Color lockedIconFillColor = new Color(0.38f, 0.42f, 0.48f, 0.42f);
-    [SerializeField] private Color clearIconFillColor = new Color(0.63f, 0.82f, 1f, 0.92f);
-    [SerializeField] private Color noMissIconFillColor = new Color(0.70f, 0.88f, 0.62f, 0.92f);
-    [SerializeField] private Color scoreIconFillColor = new Color(1f, 0.88f, 0.42f, 0.92f);
-    [SerializeField] private Color acquiredIconBorderColor = new Color(0.95f, 0.98f, 1f, 0.95f);
-    [SerializeField] private Color lockedIconBorderColor = new Color(0.70f, 0.76f, 0.82f, 0.55f);
+    [SerializeField] private Color acquiredIconColor = Color.white;
+    [SerializeField] private Color lockedIconColor = new Color(1f, 0.84f, 0.96f, 0.78f);
+    [SerializeField] private Color lockedIconFillColor = new Color(0.33f, 0.31f, 0.35f, 0.52f);
+    [SerializeField] private Color clearIconFillColor = new Color(1f, 0.31f, 0.85f, 0.92f);
+    [SerializeField] private Color noMissIconFillColor = new Color(0.39f, 0.96f, 1f, 0.92f);
+    [SerializeField] private Color scoreIconFillColor = new Color(1f, 0.85f, 0.40f, 0.94f);
+    [SerializeField] private Color acquiredIconBorderColor = new Color(1f, 0.84f, 0.96f, 0.98f);
+    [SerializeField] private Color lockedIconBorderColor = new Color(0.33f, 0.31f, 0.35f, 0.82f);
 
     public void Configure(Text lives, Text stageName, Text clear, Text gameOver)
     {
@@ -90,6 +92,30 @@ public class UIManager : MonoBehaviour
         icon2BorderImage = icon2Border;
         icon3BorderImage = icon3Border;
         iconConditionText = conditionText;
+    }
+
+    public void ConfigureResultBackgrounds(Image clearBackground, Image gameOverBackground)
+    {
+        clearResultBackground = clearBackground;
+        gameOverResultBackground = gameOverBackground;
+    }
+
+    public void ConfigureLifeHearts(string heartSymbol, string separator = null, string emptySymbol = null)
+    {
+        if (!string.IsNullOrEmpty(heartSymbol))
+        {
+            lifeHeartSymbol = heartSymbol;
+        }
+
+        if (separator != null)
+        {
+            lifeHeartSeparator = separator;
+        }
+
+        if (!string.IsNullOrEmpty(emptySymbol))
+        {
+            emptyLivesSymbol = emptySymbol;
+        }
     }
 
     public void SetLives(int lives)
@@ -157,8 +183,8 @@ public class UIManager : MonoBehaviour
     public void ShowClear(bool unlockedNextStage, bool isFinalStage)
     {
         SetText(clearText, BuildClearMessage(unlockedNextStage, isFinalStage));
-        SetActive(clearText, true);
-        SetActive(gameOverText, false);
+        SetClearResultActive(true);
+        SetGameOverResultActive(false);
     }
 
     public void ShowClear(
@@ -189,8 +215,8 @@ public class UIManager : MonoBehaviour
             totalBlocks,
             lives,
             rank));
-        SetActive(clearText, true);
-        SetActive(gameOverText, false);
+        SetClearResultActive(true);
+        SetGameOverResultActive(false);
     }
 
     public void ShowClear(
@@ -222,15 +248,15 @@ public class UIManager : MonoBehaviour
             achievedNoMissIcon,
             scoreIconLabel,
             achievedScoreIcon));
-        SetActive(clearText, true);
-        SetActive(gameOverText, false);
+        SetClearResultActive(true);
+        SetGameOverResultActive(false);
     }
 
     public void ShowGameOver()
     {
-        SetActive(clearText, false);
+        SetClearResultActive(false);
         SetText(gameOverText, GameOverMessage);
-        SetActive(gameOverText, true);
+        SetGameOverResultActive(true);
     }
 
     public void ShowGameOver(int destroyedBlocks, int totalBlocks, int lives, string rank)
@@ -240,15 +266,15 @@ public class UIManager : MonoBehaviour
 
     public void ShowGameOver(int score, int destroyedBlocks, int totalBlocks, int lives, string rank)
     {
-        SetActive(clearText, false);
+        SetClearResultActive(false);
         SetText(gameOverText, BuildGameOverMessage(score, destroyedBlocks, totalBlocks, lives, rank));
-        SetActive(gameOverText, true);
+        SetGameOverResultActive(true);
     }
 
     public void HideResult()
     {
-        SetActive(clearText, false);
-        SetActive(gameOverText, false);
+        SetClearResultActive(false);
+        SetGameOverResultActive(false);
     }
 
     private static void SetText(Text text, string value)
@@ -265,6 +291,26 @@ public class UIManager : MonoBehaviour
         {
             text.gameObject.SetActive(isActive);
         }
+    }
+
+    private static void SetActive(Image image, bool isActive)
+    {
+        if (image != null)
+        {
+            image.gameObject.SetActive(isActive);
+        }
+    }
+
+    private void SetClearResultActive(bool isActive)
+    {
+        SetActive(clearResultBackground, isActive);
+        SetActive(clearText, isActive);
+    }
+
+    private void SetGameOverResultActive(bool isActive)
+    {
+        SetActive(gameOverResultBackground, isActive);
+        SetActive(gameOverText, isActive);
     }
 
     private void SetStageIcon(Text text, Image fillImage, Image borderImage, string label, bool acquired, Color acquiredFillColor)
@@ -337,7 +383,7 @@ public class UIManager : MonoBehaviour
             return string.IsNullOrEmpty(emptyLivesSymbol) ? "-" : emptyLivesSymbol;
         }
 
-        string symbol = string.IsNullOrEmpty(lifeHeartSymbol) ? "*" : lifeHeartSymbol;
+        string symbol = string.IsNullOrEmpty(lifeHeartSymbol) ? "\u2665" : lifeHeartSymbol;
         string separator = lifeHeartSeparator ?? string.Empty;
         StringBuilder builder = new StringBuilder(symbol.Length * safeLives + separator.Length * Mathf.Max(0, safeLives - 1));
 

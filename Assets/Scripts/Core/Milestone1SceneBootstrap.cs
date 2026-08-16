@@ -24,7 +24,22 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private const string DefaultIcon3Description = "Score";
     private const int DefaultIconScoreTarget = 3000;
     private const float StageSelectButtonSpacing = 118f;
+    private const float StageSelectButtonWidth = 380f;
+    private const float StageSelectButtonHeight = 108f;
+    private const float StageSelectScrollViewWidth = 560f;
+    private const float StageSelectScrollViewHeight = 560f;
+    private const float StageSelectContentPadding = 18f;
     private const int BackgroundSortingOrder = -20;
+    private static readonly Color ThemeBackground = new Color32(0x12, 0x09, 0x14, 0xFF);
+    private static readonly Color ThemeDarkPurple = new Color32(0x24, 0x10, 0x2F, 0xFF);
+    private static readonly Color ThemePanel = new Color32(0x1A, 0x0D, 0x24, 0xFF);
+    private static readonly Color ThemePink = new Color32(0xFF, 0x4F, 0xD8, 0xFF);
+    private static readonly Color ThemeText = new Color32(0xFF, 0xD6, 0xF5, 0xFF);
+    private static readonly Color ThemeWhite = Color.white;
+    private static readonly Color ThemeCyan = new Color32(0x64, 0xF5, 0xFF, 0xFF);
+    private static readonly Color ThemePerfect = new Color32(0xFF, 0xD8, 0x66, 0xFF);
+    private static readonly Color ThemeLocked = new Color32(0x55, 0x50, 0x5A, 0xFF);
+    private static readonly Color ThemeDanger = new Color32(0xFF, 0x5D, 0xA8, 0xFF);
     private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
     private static readonly Vector2 DefaultPlayAreaCenter = Vector2.zero;
     private static readonly Vector2 DefaultPlayAreaSize = new Vector2(10f, 9.6f);
@@ -294,6 +309,11 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         }
     }
 
+    private static Color WithAlpha(Color color, float alpha)
+    {
+        return new Color(color.r, color.g, color.b, Mathf.Clamp01(alpha));
+    }
+
     private static Texture2D CreateSolidTexture(int width, int height, Color color)
     {
         Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
@@ -351,13 +371,14 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
     private static void BuildTitleScene()
     {
-        CreateCamera(new Color(0.05f, 0.09f, 0.15f, 1f));
+        CreateCamera(ThemeBackground);
         SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
 
-        CreateText(canvas.transform, "TitleText", "ARKANOID", 76, new Color(0.95f, 0.98f, 1f, 1f),
+        Text titleText = CreateText(canvas.transform, "TitleText", "ARKANOID", 76, ThemePink,
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 170f), new Vector2(760f, 120f));
+        titleText.fontStyle = FontStyle.Bold;
 
         Button startButton = CreateButton(canvas.transform, "StartButton", "Start",
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(320f, 90f));
@@ -366,19 +387,21 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
     private void BuildStageSelectScene()
     {
-        CreateCamera(new Color(0.05f, 0.09f, 0.15f, 1f));
+        CreateCamera(ThemeBackground);
         SceneLoader loader = new GameObject("SceneLoader").AddComponent<SceneLoader>();
         Canvas canvas = CreateCanvas();
         CreateEventSystem();
 
-        CreateText(canvas.transform, "StageSelectTitle", "Stage Select", 64, Color.white,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(760f, 100f));
+        Text titleText = CreateText(canvas.transform, "StageSelectTitle", "Stage Select", 64, ThemePink,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 400f), new Vector2(760f, 100f));
+        titleText.fontStyle = FontStyle.Bold;
 
-        int buttonCount = CreateStageButtonsFromDatabase(canvas.transform);
-        float backButtonY = buttonCount > 0 ? 70f - buttonCount * StageSelectButtonSpacing - 15f : -85f;
+        RectTransform stageListContent = CreateStageSelectScrollView(canvas.transform);
+        int buttonCount = CreateStageButtonsFromDatabase(stageListContent);
+        SetStageSelectContentHeight(stageListContent, buttonCount);
 
         Button backButton = CreateButton(canvas.transform, "BackButton", "Back",
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, backButtonY), new Vector2(260f, 72f));
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -420f), new Vector2(260f, 72f));
         backButton.onClick.AddListener(loader.LoadTitle);
     }
 
@@ -415,7 +438,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
                 GetStageSelectLabel(currentStageData, isUnlocked),
                 currentStageData,
                 isUnlocked,
-                new Vector2(0f, 70f - buttonCount * StageSelectButtonSpacing));
+                GetStageSelectButtonPosition(buttonCount));
             buttonCount++;
         }
 
@@ -438,6 +461,125 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return isUnlocked ? stageData.StageName : $"{stageData.StageName} (Locked)";
     }
 
+    private static RectTransform CreateStageSelectScrollView(Transform parent)
+    {
+        RectTransform scrollView = CreatePanel(parent, "StageSelectScrollView",
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), WithAlpha(ThemePanel, 0.88f),
+            new Vector2(0f, 20f), new Vector2(StageSelectScrollViewWidth, StageSelectScrollViewHeight));
+        Image scrollViewImage = scrollView.GetComponent<Image>();
+        if (scrollViewImage != null)
+        {
+            scrollViewImage.raycastTarget = true;
+        }
+
+        ScrollRect scrollRect = scrollView.gameObject.AddComponent<ScrollRect>();
+        scrollRect.horizontal = false;
+        scrollRect.vertical = true;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+        scrollRect.scrollSensitivity = 36f;
+        scrollRect.inertia = true;
+
+        CreatePanelBorder(scrollView, "StageSelectScrollViewBorder", WithAlpha(ThemePink, 0.62f), 2f);
+
+        RectTransform viewport = CreatePanel(scrollView, "Viewport",
+            new Vector2(0f, 0f), new Vector2(1f, 1f), WithAlpha(ThemeWhite, 0.01f),
+            Vector2.zero, new Vector2(-30f, 0f));
+        Image viewportImage = viewport.GetComponent<Image>();
+        if (viewportImage != null)
+        {
+            viewportImage.raycastTarget = true;
+        }
+
+        Mask viewportMask = viewport.gameObject.AddComponent<Mask>();
+        viewportMask.showMaskGraphic = false;
+
+        GameObject contentObject = new GameObject("Content", typeof(RectTransform));
+        contentObject.transform.SetParent(viewport, false);
+
+        RectTransform content = contentObject.GetComponent<RectTransform>();
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(1f, 1f);
+        content.pivot = new Vector2(0.5f, 1f);
+        content.anchoredPosition = Vector2.zero;
+        content.sizeDelta = new Vector2(0f, StageSelectScrollViewHeight);
+
+        Scrollbar verticalScrollbar = CreateVerticalScrollbar(scrollView);
+        scrollRect.viewport = viewport;
+        scrollRect.content = content;
+        scrollRect.verticalScrollbar = verticalScrollbar;
+        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+        scrollRect.verticalNormalizedPosition = 1f;
+
+        return content;
+    }
+
+    private static Scrollbar CreateVerticalScrollbar(Transform parent)
+    {
+        GameObject scrollbarObject = new GameObject("VerticalScrollbar", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Scrollbar));
+        scrollbarObject.transform.SetParent(parent, false);
+
+        RectTransform scrollbarTransform = scrollbarObject.GetComponent<RectTransform>();
+        scrollbarTransform.anchorMin = new Vector2(1f, 0f);
+        scrollbarTransform.anchorMax = new Vector2(1f, 1f);
+        scrollbarTransform.pivot = new Vector2(1f, 0.5f);
+        scrollbarTransform.anchoredPosition = Vector2.zero;
+        scrollbarTransform.sizeDelta = new Vector2(22f, 0f);
+
+        Image scrollbarBackground = scrollbarObject.GetComponent<Image>();
+        scrollbarBackground.sprite = squareSprite;
+        scrollbarBackground.color = WithAlpha(ThemeDarkPurple, 0.86f);
+
+        GameObject slidingAreaObject = new GameObject("Sliding Area", typeof(RectTransform));
+        slidingAreaObject.transform.SetParent(scrollbarTransform, false);
+
+        RectTransform slidingArea = slidingAreaObject.GetComponent<RectTransform>();
+        slidingArea.anchorMin = Vector2.zero;
+        slidingArea.anchorMax = Vector2.one;
+        slidingArea.offsetMin = new Vector2(4f, 4f);
+        slidingArea.offsetMax = new Vector2(-4f, -4f);
+
+        GameObject handleObject = new GameObject("Handle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        handleObject.transform.SetParent(slidingArea, false);
+
+        RectTransform handle = handleObject.GetComponent<RectTransform>();
+        handle.anchorMin = Vector2.zero;
+        handle.anchorMax = Vector2.one;
+        handle.offsetMin = Vector2.zero;
+        handle.offsetMax = Vector2.zero;
+
+        Image handleImage = handleObject.GetComponent<Image>();
+        handleImage.sprite = squareSprite;
+        handleImage.color = WithAlpha(ThemePink, 0.92f);
+
+        Scrollbar scrollbar = scrollbarObject.GetComponent<Scrollbar>();
+        scrollbar.direction = Scrollbar.Direction.BottomToTop;
+        scrollbar.targetGraphic = handleImage;
+        scrollbar.handleRect = handle;
+
+        return scrollbar;
+    }
+
+    private static void SetStageSelectContentHeight(RectTransform content, int buttonCount)
+    {
+        if (content == null)
+        {
+            return;
+        }
+
+        float usedHeight = buttonCount > 0
+            ? StageSelectContentPadding * 2f + StageSelectButtonHeight + Mathf.Max(0, buttonCount - 1) * StageSelectButtonSpacing
+            : StageSelectScrollViewHeight;
+        float contentHeight = Mathf.Max(StageSelectScrollViewHeight, usedHeight);
+        content.sizeDelta = new Vector2(content.sizeDelta.x, contentHeight);
+        content.anchoredPosition = Vector2.zero;
+    }
+
+    private static Vector2 GetStageSelectButtonPosition(int index)
+    {
+        float y = -StageSelectContentPadding - StageSelectButtonHeight * 0.5f - index * StageSelectButtonSpacing;
+        return new Vector2(0f, y);
+    }
+
     private static void CreateStageSelectButton(
         Transform parent,
         string name,
@@ -447,10 +589,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         Vector2 anchoredPosition)
     {
         Button stageButton = CreateButton(parent, name, label,
-            new Vector2(0.5f, 0.5f),
-            new Vector2(0.5f, 0.5f),
+            new Vector2(0.5f, 1f),
+            new Vector2(0.5f, 1f),
             anchoredPosition,
-            new Vector2(360f, 108f));
+            new Vector2(StageSelectButtonWidth, StageSelectButtonHeight));
 
         Text titleText = stageButton.transform.Find("Text")?.GetComponent<Text>();
         if (titleText != null)
@@ -464,12 +606,12 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         }
 
         Text iconStatusText = CreateText(stageButton.transform, "IconStatusText", "[-] [-] [-]",
-            21, new Color(0.88f, 0.95f, 1f, 0.95f),
+            21, WithAlpha(ThemeText, 0.96f),
             new Vector2(0f, 0.26f), new Vector2(1f, 0.62f), Vector2.zero, Vector2.zero);
         iconStatusText.fontStyle = FontStyle.Bold;
 
         Text perfectText = CreateText(stageButton.transform, "PerfectText", string.Empty,
-            18, new Color(1f, 0.86f, 0.32f, 1f),
+            20, ThemePerfect,
             new Vector2(0f, 0f), new Vector2(1f, 0.28f), Vector2.zero, Vector2.zero);
         perfectText.fontStyle = FontStyle.Bold;
 
@@ -481,7 +623,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private static void BuildGameScene(StageRuntimeSettings settings)
     {
         Physics2D.gravity = Vector2.zero;
-        Camera camera = CreateCamera(new Color(0.04f, 0.06f, 0.08f, 1f));
+        Camera camera = CreateCamera(ThemeBackground);
         PhysicsMaterial2D bouncyMaterial = new PhysicsMaterial2D("M1_Bouncy_Runtime")
         {
             friction = 0f,
@@ -514,17 +656,19 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         CreateGameHudLayout(canvas.transform, out RectTransform leftPanel, out _, out RectTransform rightPanel);
 
-        CreateText(leftPanel, "StatusTitleText", "STATUS", 34, new Color(0.94f, 0.97f, 1f, 1f),
+        Text statusTitleText = CreateText(leftPanel, "StatusTitleText", "STATUS", 34, ThemePink,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
+        statusTitleText.fontStyle = FontStyle.Bold;
 
-        Text stageNameText = CreateText(leftPanel, "StageNameText", $"STAGE: {settings.StageName}", 28, Color.white,
+        Text stageNameText = CreateText(leftPanel, "StageNameText", $"STAGE: {settings.StageName}", 28, ThemeText,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -120f), new Vector2(340f, 70f), new Vector2(0.5f, 1f));
 
-        Text scoreText = CreateText(leftPanel, "ScoreText", "SCORE: 0", 28, Color.white,
+        Text scoreText = CreateText(leftPanel, "ScoreText", "SCORE: 0", 28, ThemeWhite,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
 
-        Text livesText = CreateText(leftPanel, "LivesText", "LIFE\n-", 28, Color.white,
+        Text livesText = CreateText(leftPanel, "LivesText", "LIFE\n-", 28, ThemePink,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -292f), new Vector2(340f, 92f), new Vector2(0.5f, 1f));
+        livesText.fontStyle = FontStyle.Bold;
 
         Button backButton = CreateButton(leftPanel, "BackToStageSelectButton", "Stage Select",
             new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 64f), new Vector2(0.5f, 0f));
@@ -537,13 +681,10 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             out IconSlotViews icon3View,
             out Text iconConditionText);
 
-        Text clearText = CreateText(canvas.transform, "ClearText", UIManager.ClearMessage, 36, new Color(0.98f, 0.92f, 0.30f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1080f, 420f));
-        clearText.gameObject.SetActive(false);
-
-        Text gameOverText = CreateText(canvas.transform, "GameOverText", UIManager.GameOverMessage, 36, new Color(1f, 0.42f, 0.42f, 1f),
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(1080f, 420f));
-        gameOverText.gameObject.SetActive(false);
+        Text clearText = CreateResultText(canvas.transform, "ClearResultPanel", "ClearText", UIManager.ClearMessage, 36, ThemeCyan, out Image clearResultBackground);
+        Text gameOverText = CreateResultText(canvas.transform, "GameOverResultPanel", "GameOverText", UIManager.GameOverMessage, 36, ThemeDanger, out Image gameOverResultBackground);
+        clearResultBackground.gameObject.SetActive(false);
+        gameOverResultBackground.gameObject.SetActive(false);
 
         UIManager uiManager = new GameObject("UIManager").AddComponent<UIManager>();
         uiManager.Configure(
@@ -555,6 +696,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             icon1View.LabelText,
             icon2View.LabelText,
             icon3View.LabelText);
+        uiManager.ConfigureLifeHearts("\u2665", " ", "-");
         uiManager.ConfigureStageIconImages(
             icon1View.FillImage,
             icon2View.FillImage,
@@ -563,6 +705,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             icon2View.BorderImage,
             icon3View.BorderImage,
             iconConditionText);
+        uiManager.ConfigureResultBackgrounds(clearResultBackground, gameOverResultBackground);
         gameManager.Configure(ball.GetComponent<BallController>(), uiManager, settings.StageName, settings.InitialLives, settings.StageId, settings.HasNextStage);
         gameManager.ConfigureStageIcons(
             settings.Icon1Label,
@@ -1029,15 +1172,15 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         out RectTransform rightPanel)
     {
         leftPanel = CreatePanel(canvasTransform, "LeftStatusPanel",
-            new Vector2(0f, 0f), new Vector2(0.22f, 1f), new Color(0.02f, 0.04f, 0.07f, 0.72f));
+            new Vector2(0f, 0f), new Vector2(0.22f, 1f), WithAlpha(ThemePanel, 0.86f));
         centerPanel = CreatePanel(canvasTransform, "CenterGamePanel",
-            new Vector2(0.22f, 0f), new Vector2(0.78f, 1f), new Color(1f, 1f, 1f, 0.018f));
+            new Vector2(0.22f, 0f), new Vector2(0.78f, 1f), WithAlpha(ThemeDarkPurple, 0.10f));
         rightPanel = CreatePanel(canvasTransform, "RightIconPanel",
-            new Vector2(0.78f, 0f), new Vector2(1f, 1f), new Color(0.02f, 0.04f, 0.07f, 0.62f));
+            new Vector2(0.78f, 0f), new Vector2(1f, 1f), WithAlpha(ThemePanel, 0.82f));
 
-        Color borderColor = new Color(0.78f, 0.88f, 1f, 0.26f);
+        Color borderColor = WithAlpha(ThemePink, 0.34f);
         CreatePanelBorder(leftPanel, "LeftStatusPanelBorder", borderColor, 2f);
-        CreatePanelBorder(centerPanel, "CenterGamePanelBorder", new Color(0.78f, 0.88f, 1f, 0.20f), 2f);
+        CreatePanelBorder(centerPanel, "CenterGamePanelBorder", WithAlpha(ThemeCyan, 0.24f), 2f);
         CreatePanelBorder(rightPanel, "RightIconPanelBorder", borderColor, 2f);
     }
 
@@ -1048,15 +1191,16 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         out IconSlotViews icon3View,
         out Text iconConditionText)
     {
-        CreateText(rightPanel, "IconTitleText", "ICON", 34, new Color(0.94f, 0.97f, 1f, 1f),
+        Text iconTitleText = CreateText(rightPanel, "IconTitleText", "ICON", 34, ThemePink,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(300f, 58f), new Vector2(0.5f, 1f));
+        iconTitleText.fontStyle = FontStyle.Bold;
 
         icon1View = CreateIconSlot(rightPanel, "IconSlot_1", new Vector2(0f, -165f));
         icon2View = CreateIconSlot(rightPanel, "IconSlot_2", new Vector2(-86f, -320f));
         icon3View = CreateIconSlot(rightPanel, "IconSlot_3", new Vector2(86f, -320f));
 
         iconConditionText = CreateText(rightPanel, "IconConditionText", "C: Clear\nN: No Miss\nS: Score",
-            22, new Color(0.90f, 0.95f, 1f, 0.92f),
+            22, WithAlpha(ThemeText, 0.94f),
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -465f), new Vector2(330f, 120f),
             new Vector2(0.5f, 1f), TextAnchor.MiddleLeft);
     }
@@ -1073,9 +1217,9 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         slot.anchoredPosition = anchoredPosition;
         slot.sizeDelta = new Vector2(132f, 132f);
 
-        Image borderImage = CreateCircleImage(slot, $"{name}_BorderCircle", new Vector2(132f, 132f), new Color(0.70f, 0.76f, 0.82f, 0.55f));
-        Image fillImage = CreateCircleImage(slot, $"{name}_FillCircle", new Vector2(118f, 118f), new Color(0.38f, 0.42f, 0.48f, 0.42f));
-        Text labelText = CreateText(slot, $"{name}_Text", "-", 56, new Color(0.78f, 0.84f, 0.90f, 0.85f),
+        Image borderImage = CreateCircleImage(slot, $"{name}_BorderCircle", new Vector2(132f, 132f), WithAlpha(ThemeLocked, 0.72f));
+        Image fillImage = CreateCircleImage(slot, $"{name}_FillCircle", new Vector2(118f, 118f), WithAlpha(ThemeLocked, 0.46f));
+        Text labelText = CreateText(slot, $"{name}_Text", "-", 56, WithAlpha(ThemeText, 0.82f),
             new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
         labelText.fontStyle = FontStyle.Bold;
 
@@ -1085,6 +1229,32 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             FillImage = fillImage,
             BorderImage = borderImage
         };
+    }
+
+    private static Text CreateResultText(
+        Transform parent,
+        string panelName,
+        string textName,
+        string text,
+        int fontSize,
+        Color textColor,
+        out Image backgroundImage)
+    {
+        RectTransform panel = CreatePanel(parent, panelName,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), WithAlpha(ThemePanel, 0.90f),
+            new Vector2(0f, 20f), new Vector2(1120f, 460f));
+        backgroundImage = panel.GetComponent<Image>();
+        if (backgroundImage != null)
+        {
+            backgroundImage.raycastTarget = false;
+        }
+
+        CreatePanelBorder(panel, $"{panelName}Border", WithAlpha(ThemePink, 0.78f), 3f);
+
+        Text resultText = CreateText(panel, textName, text, fontSize, textColor,
+            new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-80f, -64f));
+        resultText.fontStyle = FontStyle.Bold;
+        return resultText;
     }
 
     private static Image CreateCircleImage(Transform parent, string name, Vector2 sizeDelta, Color color)
@@ -1233,14 +1403,24 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         rectTransform.sizeDelta = sizeDelta;
 
         Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color(0.16f, 0.54f, 0.76f, 1f);
+        image.color = ThemeDarkPurple;
 
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
 
-        Text buttonText = CreateText(buttonObject.transform, "Text", label, 32, Color.white,
+        ColorBlock buttonColors = button.colors;
+        buttonColors.normalColor = ThemeDarkPurple;
+        buttonColors.highlightedColor = WithAlpha(ThemePink, 0.82f);
+        buttonColors.pressedColor = ThemePink;
+        buttonColors.selectedColor = WithAlpha(ThemeDarkPurple, 0.95f);
+        buttonColors.disabledColor = WithAlpha(ThemeLocked, 0.68f);
+        buttonColors.colorMultiplier = 1f;
+        button.colors = buttonColors;
+
+        Text buttonText = CreateText(buttonObject.transform, "Text", label, 32, ThemeText,
             new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
         buttonText.fontStyle = FontStyle.Bold;
+        CreatePanelBorder(rectTransform, $"{name}NeonBorder", WithAlpha(ThemePink, 0.54f), 2f);
 
         return button;
     }
