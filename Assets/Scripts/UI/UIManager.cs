@@ -118,6 +118,24 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void ConfigureHudTextFormats(string lives, string stageName, string score)
+    {
+        if (lives != null)
+        {
+            livesFormat = lives;
+        }
+
+        if (stageName != null)
+        {
+            stageNameFormat = stageName;
+        }
+
+        if (score != null)
+        {
+            scoreFormat = score;
+        }
+    }
+
     public void SetLives(int lives)
     {
         if (livesText != null)

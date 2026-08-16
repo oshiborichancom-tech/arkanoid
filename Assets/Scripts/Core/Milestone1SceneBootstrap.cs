@@ -740,18 +740,21 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
         statusTitleText.fontStyle = FontStyle.Bold;
 
-        Text stageNameText = CreateText(leftPanel, "StageNameText", $"STAGE: {settings.StageName}", 28, ThemeText,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -120f), new Vector2(340f, 70f), new Vector2(0.5f, 1f));
+        CreateHudStatusCard(leftPanel, "StageStatusCard", "STAGE", settings.StageName, new Vector2(0f, -132f), new Vector2(334f, 104f), 26, ThemeText, out Text stageNameText);
+        CreateHudStatusCard(leftPanel, "ScoreStatusCard", "SCORE", "0", new Vector2(0f, -266f), new Vector2(334f, 118f), 38, ThemeWhite, out Text scoreText);
+        CreateHudStatusCard(leftPanel, "LifeStatusCard", "LIFE", "-", new Vector2(0f, -404f), new Vector2(334f, 118f), 36, ThemePink, out Text livesText);
+        livesText.resizeTextForBestFit = true;
+        livesText.resizeTextMinSize = 22;
+        livesText.resizeTextMaxSize = 36;
 
-        Text scoreText = CreateText(leftPanel, "ScoreText", "SCORE: 0", 28, ThemeWhite,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(340f, 58f), new Vector2(0.5f, 1f));
-
-        Text livesText = CreateText(leftPanel, "LivesText", "LIFE\n-", 28, ThemePink,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -292f), new Vector2(340f, 92f), new Vector2(0.5f, 1f));
-        livesText.fontStyle = FontStyle.Bold;
-
-        Button backButton = CreateButton(leftPanel, "BackToStageSelectButton", "Stage Select",
-            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(260f, 64f), new Vector2(0.5f, 0f));
+        Button backButton = CreateButton(leftPanel, "BackToStageSelectButton", "STAGE SELECT",
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 44f), new Vector2(280f, 64f), new Vector2(0.5f, 0f));
+        Text backButtonText = backButton.GetComponentInChildren<Text>();
+        if (backButtonText != null)
+        {
+            backButtonText.fontSize = 22;
+            backButtonText.color = ThemePink;
+        }
         backButton.onClick.AddListener(loader.LoadStageSelect);
 
         CreateIconPanelContents(
@@ -776,7 +779,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             icon1View.LabelText,
             icon2View.LabelText,
             icon3View.LabelText);
-        uiManager.ConfigureLifeHearts("\u2665", " ", "-");
+        uiManager.ConfigureLifeHearts("\u2665", "  ", "-");
+        uiManager.ConfigureHudTextFormats("{0}", "{0}", "{0}");
         uiManager.ConfigureStageIconImages(
             icon1View.FillImage,
             icon2View.FillImage,
@@ -1260,8 +1264,46 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         Color borderColor = WithAlpha(ThemePink, 0.34f);
         CreatePanelBorder(leftPanel, "LeftStatusPanelBorder", borderColor, 2f);
-        CreatePanelBorder(centerPanel, "CenterGamePanelBorder", WithAlpha(ThemeCyan, 0.24f), 2f);
+        Image centerImage = centerPanel.GetComponent<Image>();
+        if (centerImage != null)
+        {
+            centerImage.color = WithAlpha(ThemeDarkPurple, 0.045f);
+        }
+
+        CreatePanelBorder(centerPanel, "CenterGamePanelBorder", WithAlpha(ThemeCyan, 0.32f), 2f);
         CreatePanelBorder(rightPanel, "RightIconPanelBorder", borderColor, 2f);
+    }
+
+    private static RectTransform CreateHudStatusCard(
+        Transform parent,
+        string name,
+        string label,
+        string value,
+        Vector2 anchoredPosition,
+        Vector2 sizeDelta,
+        int valueFontSize,
+        Color valueColor,
+        out Text valueText)
+    {
+        RectTransform card = CreatePanel(parent, name,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), WithAlpha(ThemeDarkPurple, 0.68f),
+            anchoredPosition, sizeDelta, new Vector2(0.5f, 0.5f));
+        CreatePanelBorder(card, $"{name}Border", WithAlpha(ThemePink, 0.36f), 2f);
+        CreatePanel(card, $"{name}NeonAccent",
+            new Vector2(0f, 0f), new Vector2(0f, 1f), WithAlpha(ThemePink, 0.86f),
+            Vector2.zero, new Vector2(5f, 0f), new Vector2(0f, 0.5f));
+
+        Text labelText = CreateText(card, $"{name}Label", label, 20, ThemePink,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(18f, -18f), new Vector2(-36f, 30f),
+            new Vector2(0.5f, 1f), TextAnchor.MiddleLeft);
+        labelText.fontStyle = FontStyle.Bold;
+
+        valueText = CreateText(card, $"{name}ValueText", value, valueFontSize, valueColor,
+            new Vector2(0f, 0f), new Vector2(1f, 0.72f), new Vector2(18f, 4f), new Vector2(-44f, -6f),
+            new Vector2(0.5f, 0.5f), TextAnchor.MiddleLeft);
+        valueText.fontStyle = FontStyle.Bold;
+
+        return card;
     }
 
     private static void CreateIconPanelContents(
@@ -1271,18 +1313,34 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         out IconSlotViews icon3View,
         out Text iconConditionText)
     {
-        Text iconTitleText = CreateText(rightPanel, "IconTitleText", "ICON", 34, ThemePink,
+        Text iconTitleText = CreateText(rightPanel, "IconTitleText", "TARGET ICON", 30, ThemePink,
             new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(300f, 58f), new Vector2(0.5f, 1f));
         iconTitleText.fontStyle = FontStyle.Bold;
+        iconTitleText.resizeTextForBestFit = true;
+        iconTitleText.resizeTextMinSize = 24;
+        iconTitleText.resizeTextMaxSize = 30;
 
-        icon1View = CreateIconSlot(rightPanel, "IconSlot_1", new Vector2(0f, -165f));
-        icon2View = CreateIconSlot(rightPanel, "IconSlot_2", new Vector2(-86f, -320f));
-        icon3View = CreateIconSlot(rightPanel, "IconSlot_3", new Vector2(86f, -320f));
+        RectTransform missionCard = CreatePanel(rightPanel, "TargetIconCard",
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), WithAlpha(ThemeDarkPurple, 0.58f),
+            new Vector2(0f, -102f), new Vector2(358f, 470f), new Vector2(0.5f, 1f));
+        CreatePanelBorder(missionCard, "TargetIconCardBorder", WithAlpha(ThemePink, 0.34f), 2f);
+        CreatePanel(missionCard, "TargetIconCardTopGlow",
+            new Vector2(0f, 1f), new Vector2(1f, 1f), WithAlpha(ThemeCyan, 0.58f),
+            Vector2.zero, new Vector2(0f, 3f), new Vector2(0.5f, 1f));
 
-        iconConditionText = CreateText(rightPanel, "IconConditionText", "C: Clear\nN: No Miss\nS: Score",
+        icon1View = CreateIconSlot(missionCard, "IconSlot_1", new Vector2(0f, -112f));
+        icon2View = CreateIconSlot(missionCard, "IconSlot_2", new Vector2(-88f, -278f));
+        icon3View = CreateIconSlot(missionCard, "IconSlot_3", new Vector2(88f, -278f));
+
+        RectTransform conditionCard = CreatePanel(missionCard, "IconConditionCard",
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), WithAlpha(ThemePanel, 0.74f),
+            new Vector2(0f, -400f), new Vector2(324f, 106f), new Vector2(0.5f, 0.5f));
+        CreatePanelBorder(conditionCard, "IconConditionCardBorder", WithAlpha(ThemeCyan, 0.28f), 2f);
+
+        iconConditionText = CreateText(conditionCard, "IconConditionText", "C: Clear\nN: No Miss\nS: Score",
             22, WithAlpha(ThemeText, 0.94f),
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -465f), new Vector2(330f, 120f),
-            new Vector2(0.5f, 1f), TextAnchor.MiddleLeft);
+            new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-32f, -14f),
+            null, TextAnchor.MiddleLeft);
     }
 
     private static IconSlotViews CreateIconSlot(Transform parent, string name, Vector2 anchoredPosition)
@@ -1295,11 +1353,11 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         slot.anchorMax = new Vector2(0.5f, 1f);
         slot.pivot = new Vector2(0.5f, 0.5f);
         slot.anchoredPosition = anchoredPosition;
-        slot.sizeDelta = new Vector2(132f, 132f);
+        slot.sizeDelta = new Vector2(142f, 142f);
 
-        Image borderImage = CreateCircleImage(slot, $"{name}_BorderCircle", new Vector2(132f, 132f), WithAlpha(ThemeLocked, 0.72f));
-        Image fillImage = CreateCircleImage(slot, $"{name}_FillCircle", new Vector2(118f, 118f), WithAlpha(ThemeLocked, 0.46f));
-        Text labelText = CreateText(slot, $"{name}_Text", "-", 56, WithAlpha(ThemeText, 0.82f),
+        Image borderImage = CreateCircleImage(slot, $"{name}_BorderCircle", new Vector2(142f, 142f), WithAlpha(ThemeLocked, 0.76f));
+        Image fillImage = CreateCircleImage(slot, $"{name}_FillCircle", new Vector2(124f, 124f), WithAlpha(ThemeLocked, 0.50f));
+        Text labelText = CreateText(slot, $"{name}_Text", "-", 60, WithAlpha(ThemeText, 0.88f),
             new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
         labelText.fontStyle = FontStyle.Bold;
 
