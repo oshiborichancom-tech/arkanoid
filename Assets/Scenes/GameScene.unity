@@ -171,11 +171,11 @@ MonoBehaviour:
   stageDatabase: {fileID: 11400000, guid: 9fccff2f8f494e2ea7f07f0885fbea89, type: 2}
   stageName: Stage 1
   fallbackBackgroundSprite: {fileID: 0}
-  blockRows: 5
-  blockColumns: 10
-  blockSize: 0.6
-  blockSpacing: 0.12
-  blockStartPosition: {x: -3.24, y: 3.25}
+  blockRows: 8
+  blockColumns: 24
+  blockSize: 0.375
+  blockSpacing: 0
+  blockStartPosition: {x: -4.3125, y: 3.25}
   ballSpeed: 7
   paddleSpeed: 9
   initialLives: 3

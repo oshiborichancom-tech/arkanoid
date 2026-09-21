@@ -20,22 +20,26 @@ public class StageData : ScriptableObject
     [SerializeField] private Vector2 backgroundScaleMultiplier = Vector2.one;
 
     [Header("Blocks")]
-    [SerializeField, Min(1)] private int blockRows = 5;
-    [SerializeField, Min(1)] private int blockColumns = 10;
-    [SerializeField, Min(0.1f)] private float blockSize = 0.6f;
-    [SerializeField, Min(0f)] private float blockSpacing = 0.01f;
-    [SerializeField] private Vector2 blockStartPosition = new Vector2(-3.24f, 3.25f);
+    [SerializeField, Min(1)] private int blockRows = 8;
+    [SerializeField, Min(1)] private int blockColumns = 24;
+    [SerializeField, Min(0.1f)] private float blockSize = 0.375f;
+    [SerializeField, Min(0f)] private float blockSpacing = 0f;
+    [SerializeField] private Vector2 blockStartPosition = new Vector2(-4.3125f, 3.25f);
     [SerializeField] private bool useSingleBlockColor = true;
     [SerializeField] private Color singleBlockColor = new Color(0.75f, 0.75f, 0.75f, 1f);
     [SerializeField] private bool useManualBlockLayout = false;
+    [Tooltip("Manual layout: 0, '.', or space = empty; 1 = normal; 2 = durable; 3 = indestructible.")]
     [SerializeField]
     private string[] blockLayout =
     {
-        "111111111",
-        "111111111",
-        "111111111",
-        "111111111",
-        "111111111"
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111"
     };
 
     [Header("Player")]

@@ -5,7 +5,9 @@ using UnityEngine;
 public class ItemController : MonoBehaviour
 {
     private const int ItemSortingOrder = 15;
-    private const int LabelSortingOrderOffset = 1;
+    private const int FillSortingOrderOffset = 1;
+    private const int LabelSortingOrderOffset = 2;
+    private const string BorderObjectName = "NeonBorder";
     private const string LabelObjectName = "Label";
 
     [SerializeField] private ItemType itemType = ItemType.PaddleExpand;
@@ -13,13 +15,17 @@ public class ItemController : MonoBehaviour
     [SerializeField] private float destroyY = -5.8f;
     [SerializeField] private ItemEffectManager itemEffectManager;
     [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private SpriteRenderer borderRenderer;
     [SerializeField] private TextMesh labelText;
-    [SerializeField] private Color paddleExpandColor = new Color(0.30f, 0.68f, 1f, 1f);
-    [SerializeField] private Color lifeUpColor = new Color(0.35f, 0.92f, 0.55f, 1f);
-    [SerializeField] private Color addBallsColor = new Color(1f, 0.72f, 0.22f, 1f);
+    [SerializeField] private Color innerColor = new Color(0.10f, 0.05f, 0.14f, 0.96f);
+    [SerializeField] private Color paddleExpandColor = new Color(1f, 0.31f, 0.85f, 1f);
+    [SerializeField] private Color lifeUpColor = new Color(1f, 0.36f, 0.66f, 1f);
+    [SerializeField] private Color addBallsColor = new Color(0.39f, 0.96f, 1f, 1f);
     [SerializeField] private Color labelColor = Color.white;
     [SerializeField] private int labelFontSize = 64;
     [SerializeField] private float labelCharacterSize = 0.12f;
+    [SerializeField] private float borderScale = 1.18f;
+    [SerializeField] private bool useGeneratedCircleSprite = true;
 
     private static Sprite fallbackSprite;
     private static Font labelFont;
@@ -149,15 +155,16 @@ public class ItemController : MonoBehaviour
 
         if (spriteRenderer == null)
         {
-            return;
+            spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
 
-        if (spriteRenderer.sprite == null)
+        if (useGeneratedCircleSprite || spriteRenderer.sprite == null)
         {
             spriteRenderer.sprite = GetFallbackSprite();
         }
 
-        spriteRenderer.sortingOrder = ItemSortingOrder;
+        spriteRenderer.sortingOrder = ItemSortingOrder + FillSortingOrderOffset;
+        EnsureBorderVisual();
         EnsureLabelVisual();
     }
 
@@ -168,10 +175,47 @@ public class ItemController : MonoBehaviour
             spriteRenderer = GetComponent<SpriteRenderer>();
         }
 
+        if (borderRenderer == null)
+        {
+            Transform borderTransform = transform.Find(BorderObjectName);
+            borderRenderer = borderTransform != null ? borderTransform.GetComponent<SpriteRenderer>() : null;
+        }
+
         if (labelText == null)
         {
             labelText = GetComponentInChildren<TextMesh>(true);
         }
+    }
+
+    private void EnsureBorderVisual()
+    {
+        if (borderRenderer == null)
+        {
+            borderRenderer = CreateBorderRenderer();
+        }
+
+        if (borderRenderer == null)
+        {
+            return;
+        }
+
+        borderRenderer.sprite = spriteRenderer != null && spriteRenderer.sprite != null
+            ? spriteRenderer.sprite
+            : GetFallbackSprite();
+        borderRenderer.sortingOrder = ItemSortingOrder;
+
+        Transform borderTransform = borderRenderer.transform;
+        borderTransform.localPosition = Vector3.zero;
+        borderTransform.localRotation = Quaternion.identity;
+        float safeScale = Mathf.Max(1f, borderScale);
+        borderTransform.localScale = new Vector3(safeScale, safeScale, 1f);
+    }
+
+    private SpriteRenderer CreateBorderRenderer()
+    {
+        GameObject borderObject = new GameObject(BorderObjectName);
+        borderObject.transform.SetParent(transform, false);
+        return borderObject.AddComponent<SpriteRenderer>();
     }
 
     private void EnsureLabelVisual()
@@ -194,7 +238,7 @@ public class ItemController : MonoBehaviour
         labelText.anchor = TextAnchor.MiddleCenter;
         labelText.alignment = TextAlignment.Center;
         labelText.fontSize = Mathf.Max(1, labelFontSize);
-        labelText.characterSize = Mathf.Max(0.01f, labelCharacterSize);
+        labelText.characterSize = GetLabelCharacterSize(itemType);
         labelText.color = labelColor;
 
         Font font = GetLabelFont();
@@ -222,12 +266,18 @@ public class ItemController : MonoBehaviour
             return;
         }
 
-        spriteRenderer.color = GetItemColor(itemType);
+        spriteRenderer.color = innerColor;
+
+        if (borderRenderer != null)
+        {
+            borderRenderer.color = GetItemColor(itemType);
+        }
 
         if (labelText != null)
         {
             labelText.text = GetItemLabel(itemType);
             labelText.color = labelColor;
+            labelText.characterSize = GetLabelCharacterSize(itemType);
             UpdateLabelRenderer();
         }
     }
@@ -277,12 +327,18 @@ public class ItemController : MonoBehaviour
             case ItemType.PaddleExpand:
                 return "P";
             case ItemType.LifeUp:
-                return "L";
+                return "\u2665";
             case ItemType.AddBalls:
-                return "B";
+                return "+2";
             default:
                 return "?";
         }
+    }
+
+    private float GetLabelCharacterSize(ItemType type)
+    {
+        float safeCharacterSize = Mathf.Max(0.01f, labelCharacterSize);
+        return type == ItemType.AddBalls ? safeCharacterSize * 0.78f : safeCharacterSize;
     }
 
     private static Font GetLabelFont()
@@ -337,10 +393,19 @@ public class ItemController : MonoBehaviour
         fallSpeed = Mathf.Max(0f, fallSpeed);
         labelFontSize = Mathf.Max(1, labelFontSize);
         labelCharacterSize = Mathf.Max(0.01f, labelCharacterSize);
+        borderScale = Mathf.Max(1f, borderScale);
 
         if (spriteRenderer != null)
         {
-            spriteRenderer.color = GetItemColor(itemType);
+            spriteRenderer.color = innerColor;
+            spriteRenderer.sortingOrder = ItemSortingOrder + FillSortingOrderOffset;
+        }
+
+        if (borderRenderer != null)
+        {
+            borderRenderer.color = GetItemColor(itemType);
+            borderRenderer.sortingOrder = ItemSortingOrder;
+            borderRenderer.transform.localScale = new Vector3(borderScale, borderScale, 1f);
         }
 
         if (labelText != null)
@@ -348,7 +413,7 @@ public class ItemController : MonoBehaviour
             labelText.text = GetItemLabel(itemType);
             labelText.color = labelColor;
             labelText.fontSize = labelFontSize;
-            labelText.characterSize = labelCharacterSize;
+            labelText.characterSize = GetLabelCharacterSize(itemType);
             UpdateLabelRenderer();
         }
     }

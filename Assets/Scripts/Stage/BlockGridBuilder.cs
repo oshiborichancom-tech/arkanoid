@@ -5,11 +5,13 @@ public class BlockGridBuilder : MonoBehaviour
     [SerializeField] private Block blockPrefab;
     [SerializeField] private GameManager gameManager;
     [SerializeField] private Transform blocksParent;
-    [SerializeField] private int rows = 5;
-    [SerializeField] private int columns = 10;
-    [SerializeField] private float blockSize = 0.6f;
-    [SerializeField] private float spacing = 0.01f;
-    [SerializeField] private Vector2 startPosition = new Vector2(-3.24f, 3.25f);
+    [SerializeField] private int rows = 8;
+    [SerializeField] private int columns = 24;
+    [SerializeField] private float blockSize = 0.375f;
+    [SerializeField] private float spacing = 0f;
+    [SerializeField] private Vector2 startPosition = new Vector2(-4.3125f, 3.25f);
+    [SerializeField, Min(0f)] private float visualOverlap = 0.004f;
+    [SerializeField, Min(0f)] private float colliderInset = 0.001f;
     [SerializeField] private ItemController itemPrefab;
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
     [SerializeField] private ItemEffectManager itemEffectManager;
@@ -19,11 +21,14 @@ public class BlockGridBuilder : MonoBehaviour
     [SerializeField]
     private string[] blockLayout =
     {
-        "111111111",
-        "111111111",
-        "111111111",
-        "111111111",
-        "111111111"
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111",
+        "111111111111111111111111"
     };
     [SerializeField]
     private Color[] rowColors =
@@ -65,17 +70,17 @@ public class BlockGridBuilder : MonoBehaviour
                 : FindObjectOfType<ItemEffectManager>();
         }
 
-        int createdCount = 0;
-        bool useFallbackGrid = !TryBuildManualGrid(out createdCount);
+        int clearTargetCount = 0;
+        bool useFallbackGrid = !TryBuildManualGrid(out clearTargetCount);
 
         if (useFallbackGrid)
         {
-            createdCount = BuildFullGrid();
+            clearTargetCount = BuildFullGrid();
         }
 
         if (gameManager != null)
         {
-            gameManager.RegisterBlocks(createdCount);
+            gameManager.RegisterBlocks(clearTargetCount);
         }
     }
 
@@ -91,7 +96,7 @@ public class BlockGridBuilder : MonoBehaviour
                     column * (blockSize + spacing),
                     -row * (blockSize + spacing));
 
-                if (CreateBlock(row, column, position))
+                if (CreateBlock(row, column, position, BlockType.Normal, out bool countsForClear) && countsForClear)
                 {
                     createdCount++;
                 }
@@ -117,9 +122,9 @@ public class BlockGridBuilder : MonoBehaviour
         }
 
         int manualColumns = GetManualLayoutColumnCount();
-        if (manualColumns <= 0 || !HasManualBlocks())
+        if (manualColumns <= 0 || !HasManualClearTargets())
         {
-            Debug.LogWarning("Manual block layout has no valid '1' entries. Falling back to blockRows/blockColumns.");
+            Debug.LogWarning("Manual block layout has no destructible '1' or '2' entries. Falling back to blockRows/blockColumns.");
             return false;
         }
 
@@ -130,7 +135,7 @@ public class BlockGridBuilder : MonoBehaviour
 
             for (int column = 0; column < manualColumns; column++)
             {
-                if (!ShouldCreateManualBlock(rowText, row, column, ref loggedUnknownCharacter))
+                if (!TryGetManualBlockType(rowText, row, column, ref loggedUnknownCharacter, out BlockType blockType))
                 {
                     continue;
                 }
@@ -139,7 +144,7 @@ public class BlockGridBuilder : MonoBehaviour
                     column * (blockSize + spacing),
                     -row * (blockSize + spacing));
 
-                if (CreateBlock(row, column, position))
+                if (CreateBlock(row, column, position, blockType, out bool countsForClear) && countsForClear)
                 {
                     createdCount++;
                 }
@@ -149,8 +154,9 @@ public class BlockGridBuilder : MonoBehaviour
         return true;
     }
 
-    private bool CreateBlock(int row, int column, Vector2 position)
+    private bool CreateBlock(int row, int column, Vector2 position, BlockType blockType, out bool countsForClear)
     {
+        countsForClear = false;
         Block block = Instantiate(blockPrefab, position, Quaternion.identity, blocksParent);
         if (block == null)
         {
@@ -159,15 +165,22 @@ public class BlockGridBuilder : MonoBehaviour
 
         block.name = $"Block_{row + 1}_{column + 1}";
         block.gameObject.SetActive(true);
-        block.transform.localScale = Vector3.one * blockSize;
+        float visualSize = blockSize + Mathf.Max(0f, visualOverlap);
+        block.transform.localScale = Vector3.one * visualSize;
+
+        BoxCollider2D blockCollider = block.GetComponent<BoxCollider2D>();
+        if (blockCollider != null)
+        {
+            float colliderWorldSize = Mathf.Max(0.01f, blockSize - Mathf.Max(0f, colliderInset) * 2f);
+            float colliderLocalSize = colliderWorldSize / visualSize;
+            blockCollider.size = Vector2.one * colliderLocalSize;
+        }
         block.Initialize(gameManager);
         block.ConfigureItemDrop(itemPrefab, itemDropChance, itemEffectManager);
-
         SpriteRenderer renderer = block.GetComponent<SpriteRenderer>();
-        if (renderer != null)
-        {
-            renderer.color = GetBlockColor(row, renderer.color);
-        }
+        Color normalColor = GetBlockColor(row, renderer != null ? renderer.color : Color.white);
+        block.ConfigureType(blockType, normalColor);
+        countsForClear = block.CountsForClear;
 
         return true;
     }
@@ -246,7 +259,7 @@ public class BlockGridBuilder : MonoBehaviour
         return maxColumns;
     }
 
-    private bool HasManualBlocks()
+    private bool HasManualClearTargets()
     {
         if (blockLayout == null)
         {
@@ -263,7 +276,7 @@ public class BlockGridBuilder : MonoBehaviour
 
             for (int column = 0; column < rowText.Length; column++)
             {
-                if (rowText[column] == '1')
+                if (rowText[column] == '1' || rowText[column] == '2')
                 {
                     return true;
                 }
@@ -273,8 +286,14 @@ public class BlockGridBuilder : MonoBehaviour
         return false;
     }
 
-    private static bool ShouldCreateManualBlock(string rowText, int row, int column, ref bool loggedUnknownCharacter)
+    private static bool TryGetManualBlockType(
+        string rowText,
+        int row,
+        int column,
+        ref bool loggedUnknownCharacter,
+        out BlockType blockType)
     {
+        blockType = BlockType.Normal;
         if (string.IsNullOrEmpty(rowText) || column >= rowText.Length)
         {
             return false;
@@ -284,6 +303,13 @@ public class BlockGridBuilder : MonoBehaviour
         switch (value)
         {
             case '1':
+                blockType = BlockType.Normal;
+                return true;
+            case '2':
+                blockType = BlockType.Durable;
+                return true;
+            case '3':
+                blockType = BlockType.Indestructible;
                 return true;
             case '0':
             case '.':
@@ -306,6 +332,8 @@ public class BlockGridBuilder : MonoBehaviour
         columns = Mathf.Max(1, columns);
         blockSize = Mathf.Max(0.1f, blockSize);
         spacing = Mathf.Max(0f, spacing);
+        visualOverlap = Mathf.Max(0f, visualOverlap);
+        colliderInset = Mathf.Clamp(colliderInset, 0f, blockSize * 0.49f);
         itemDropChance = Mathf.Clamp01(itemDropChance);
     }
 }

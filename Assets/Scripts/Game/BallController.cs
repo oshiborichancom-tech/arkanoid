@@ -8,7 +8,7 @@ public class BallController : MonoBehaviour
     [SerializeField] private float lostY = -5.6f;
     [SerializeField] private float minimumVerticalSpeed = 1.5f;
     [SerializeField] private float paddleBounceMaxX = 0.85f;
-    [SerializeField] private Vector2 paddleOffset = new Vector2(0f, 0.45f);
+    [SerializeField] private Vector2 paddleOffset = new Vector2(0f, 0.3f);
     [SerializeField] private Transform paddle;
     [SerializeField] private GameManager gameManager;
 
@@ -82,7 +82,7 @@ public class BallController : MonoBehaviour
         Block block = collision.collider.GetComponent<Block>();
         if (block != null)
         {
-            block.Break();
+            block.Hit(this);
         }
 
         PaddleController paddleController = collision.collider.GetComponent<PaddleController>();

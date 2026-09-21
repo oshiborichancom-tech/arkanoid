@@ -18,21 +18,25 @@ MonoBehaviour:
   backgroundFitMode: 2
   backgroundOffset: {x: 0, y: 0}
   backgroundScaleMultiplier: {x: 1, y: 1}
-  blockRows: 7
-  blockColumns: 9
-  blockSize: 0.6
-  blockSpacing: 0.01
-  blockStartPosition: {x: -2.88, y: 3.25}
+  blockRows: 10
+  blockColumns: 15
+  blockSize: 0.375
+  blockSpacing: 0
+  blockStartPosition: {x: -2.625, y: 3.25}
   useSingleBlockColor: 1
   singleBlockColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
   useManualBlockLayout: 1
   blockLayout:
-  - 111111111
-  - 110111011
-  - 111000111
-  - 110111011
-  - 111111111
-  - 111111111
+  - 111111111111111
+  - 111111111111111
+  - 111101111101111
+  - 111000111000111
+  - 110001111100011
+  - 110001111100011
+  - 111000111000111
+  - 111101111101111
+  - 111111111111111
+  - 111111111111111
   ballSpeed: 8
   paddleSpeed: 9
   initialLives: 3

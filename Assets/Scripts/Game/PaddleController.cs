@@ -9,6 +9,7 @@ public class PaddleController : MonoBehaviour
     [SerializeField] private Camera targetCamera;
     [SerializeField] private bool usePlayAreaBounds;
     [SerializeField] private Vector2 playAreaXLimits = new Vector2(-8f, 8f);
+    [SerializeField] private bool logMovementBounds = true;
 
     private Rigidbody2D paddleRigidbody;
     private Collider2D paddleCollider;
@@ -99,6 +100,7 @@ public class PaddleController : MonoBehaviour
         playAreaXLimits = new Vector2(Mathf.Min(minX, maxX), Mathf.Max(minX, maxX));
         usePlayAreaBounds = true;
         ClampCurrentPositionToScreen();
+        LogMovementBounds("configured");
     }
 
     public void ApplyTemporaryExpand(float scaleMultiplier, float duration)
@@ -118,6 +120,7 @@ public class PaddleController : MonoBehaviour
         expandedScale.x = baseLocalScale.x * safeMultiplier;
         transform.localScale = expandedScale;
         ClampCurrentPositionToScreen();
+        LogMovementBounds("expanded");
 
         if (safeDuration <= 0f)
         {
@@ -155,6 +158,7 @@ public class PaddleController : MonoBehaviour
 
         transform.localScale = baseLocalScale;
         ClampCurrentPositionToScreen();
+        LogMovementBounds("restored");
     }
 
     private void ClampCurrentPositionToScreen()
@@ -191,7 +195,7 @@ public class PaddleController : MonoBehaviour
     {
         if (usePlayAreaBounds)
         {
-            return playAreaXLimits.x + GetHalfWidth() + screenPadding;
+            return playAreaXLimits.x + GetHalfWidth();
         }
 
         if (targetCamera == null)
@@ -206,7 +210,7 @@ public class PaddleController : MonoBehaviour
     {
         if (usePlayAreaBounds)
         {
-            return playAreaXLimits.y - GetHalfWidth() - screenPadding;
+            return playAreaXLimits.y - GetHalfWidth();
         }
 
         if (targetCamera == null)
@@ -219,16 +223,33 @@ public class PaddleController : MonoBehaviour
 
     private float GetHalfWidth()
     {
+        float halfWidth = 0f;
+
         if (paddleCollider != null)
         {
-            return paddleCollider.bounds.extents.x;
+            halfWidth = Mathf.Max(halfWidth, paddleCollider.bounds.extents.x);
         }
 
         if (spriteRenderer != null)
         {
-            return spriteRenderer.bounds.extents.x;
+            halfWidth = Mathf.Max(halfWidth, spriteRenderer.bounds.extents.x);
         }
 
-        return transform.lossyScale.x * 0.5f;
+        return halfWidth > 0f ? halfWidth : Mathf.Abs(transform.lossyScale.x) * 0.5f;
+    }
+
+    private void LogMovementBounds(string context)
+    {
+        if (!logMovementBounds || !usePlayAreaBounds)
+        {
+            return;
+        }
+
+        float halfWidth = GetHalfWidth();
+        float minCenterX = playAreaXLimits.x + halfWidth;
+        float maxCenterX = playAreaXLimits.y - halfWidth;
+        Debug.Log(
+            $"Paddle movement bounds ({context}): playArea=[{playAreaXLimits.x:F3}, {playAreaXLimits.y:F3}], " +
+            $"halfWidth={halfWidth:F3}, centerX=[{minCenterX:F3}, {maxCenterX:F3}]");
     }
 }

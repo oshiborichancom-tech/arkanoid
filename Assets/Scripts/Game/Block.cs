@@ -4,11 +4,15 @@ using UnityEngine;
 public class Block : MonoBehaviour
 {
     private const string BorderObjectName = "Border";
+    private const string StateLabelObjectName = "StateLabel";
     private const int BorderSortingOrderOffset = -1;
+    private const int LabelSortingOrderOffset = 2;
+    private const int DurableHitPoints = 2;
 
     private static readonly ItemType[] DropItemTypes = (ItemType[])System.Enum.GetValues(typeof(ItemType));
 
     [SerializeField] private bool countAsTarget = true;
+    [SerializeField] private BlockType blockType = BlockType.Normal;
     [SerializeField] private GameManager gameManager;
     [SerializeField] private ItemController itemPrefab;
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
@@ -22,14 +26,43 @@ public class Block : MonoBehaviour
     [SerializeField] private float breakEffectEndScale = 1.35f;
     [SerializeField] private bool showBorder = true;
     [SerializeField] private Color borderColor = new Color(0f, 0f, 0f, 0.65f);
-    [SerializeField] private float borderThickness = 0.04f;
+    [SerializeField] private float borderThickness = 0.015f;
     [SerializeField] private SpriteRenderer borderRenderer;
+    [Header("Block Type Visuals")]
+    [SerializeField] private Color durableFullColor = new Color(0.66f, 0.25f, 0.85f, 1f);
+    [SerializeField] private Color durableDamagedColor = new Color(1f, 0.45f, 0.82f, 1f);
+    [SerializeField] private Color durableBorderColor = new Color(1f, 0.31f, 0.85f, 1f);
+    [SerializeField] private Color indestructibleColor = new Color(0.18f, 0.15f, 0.22f, 1f);
+    [SerializeField] private Color indestructibleBorderColor = new Color(0.39f, 0.96f, 1f, 1f);
+    [SerializeField] private float durableBorderThickness = 0.025f;
+    [SerializeField] private float indestructibleBorderThickness = 0.02f;
+    [SerializeField] private float stateLabelCharacterSize = 0.34f;
+    [SerializeField] private TextMesh stateLabel;
 
     private bool isBroken;
+    private int remainingHitPoints = 1;
+    private int lastHitFrame = -1;
+    private int lastHitterInstanceId;
+    private Color normalBlockColor = Color.white;
+    private Color normalBorderColor;
+    private float normalBorderThickness;
+
+    public BlockType Type => blockType;
+    public bool CountsForClear => countAsTarget && blockType != BlockType.Indestructible;
+    public int RemainingHitPoints => blockType == BlockType.Indestructible ? -1 : remainingHitPoints;
 
     private void Awake()
     {
-        EnsureBorderVisual();
+        SpriteRenderer bodyRenderer = GetComponent<SpriteRenderer>();
+        if (bodyRenderer != null)
+        {
+            normalBlockColor = GetOpaqueColor(bodyRenderer.color);
+        }
+
+        normalBorderColor = borderColor;
+        normalBorderThickness = borderThickness;
+        remainingHitPoints = GetInitialHitPoints(blockType);
+        ApplyTypeVisual();
     }
 
     private void Start()
@@ -46,12 +79,24 @@ public class Block : MonoBehaviour
                 : FindObjectOfType<ItemEffectManager>();
         }
 
-        EnsureBorderVisual();
+        ApplyTypeVisual();
     }
 
     public void Initialize(GameManager manager)
     {
         gameManager = manager;
+    }
+
+    public void ConfigureType(BlockType type, Color normalColor)
+    {
+        blockType = type;
+        normalBlockColor = GetOpaqueColor(normalColor);
+        countAsTarget = blockType != BlockType.Indestructible;
+        remainingHitPoints = GetInitialHitPoints(blockType);
+        isBroken = false;
+        lastHitFrame = -1;
+        lastHitterInstanceId = 0;
+        ApplyTypeVisual();
     }
 
     public void ConfigureItemDrop(ItemController prefab, float dropChance, ItemEffectManager effectManager)
@@ -63,12 +108,44 @@ public class Block : MonoBehaviour
 
     public void Break()
     {
+        Hit(null);
+    }
+
+    public void Hit(BallController hitter)
+    {
         if (isBroken)
         {
             return;
         }
 
+        int hitterInstanceId = hitter != null ? hitter.GetInstanceID() : 0;
+        if (lastHitFrame == Time.frameCount && lastHitterInstanceId == hitterInstanceId)
+        {
+            return;
+        }
+
+        lastHitFrame = Time.frameCount;
+        lastHitterInstanceId = hitterInstanceId;
+
+        if (blockType == BlockType.Indestructible)
+        {
+            return;
+        }
+
+        if (blockType == BlockType.Durable && remainingHitPoints > 1)
+        {
+            remainingHitPoints--;
+            ApplyTypeVisual();
+            return;
+        }
+
+        DestroyBlock();
+    }
+
+    private void DestroyBlock()
+    {
         isBroken = true;
+        remainingHitPoints = 0;
 
         SpawnBreakEffect();
         TryDropItem();
@@ -79,6 +156,123 @@ public class Block : MonoBehaviour
         }
 
         Destroy(gameObject);
+    }
+
+    private void ApplyTypeVisual()
+    {
+        SpriteRenderer bodyRenderer = GetComponent<SpriteRenderer>();
+        if (bodyRenderer == null)
+        {
+            SetBorderVisible(false);
+            SetStateLabelVisible(false);
+            return;
+        }
+
+        Color bodyColor;
+        string label;
+        Color labelColor;
+
+        switch (blockType)
+        {
+            case BlockType.Durable:
+                bool isDamaged = remainingHitPoints <= 1;
+                bodyColor = isDamaged ? durableDamagedColor : durableFullColor;
+                borderColor = durableBorderColor;
+                borderThickness = durableBorderThickness;
+                label = isDamaged ? "1" : "2";
+                labelColor = Color.white;
+                break;
+            case BlockType.Indestructible:
+                bodyColor = indestructibleColor;
+                borderColor = indestructibleBorderColor;
+                borderThickness = indestructibleBorderThickness;
+                label = "X";
+                labelColor = indestructibleBorderColor;
+                break;
+            default:
+                bodyColor = normalBlockColor;
+                borderColor = normalBorderColor;
+                borderThickness = normalBorderThickness;
+                label = string.Empty;
+                labelColor = Color.white;
+                break;
+        }
+
+        bodyRenderer.color = GetOpaqueColor(bodyColor);
+        EnsureBorderVisual();
+        UpdateStateLabel(bodyRenderer, label, labelColor);
+    }
+
+    private void UpdateStateLabel(SpriteRenderer bodyRenderer, string label, Color labelColor)
+    {
+        if (string.IsNullOrEmpty(label))
+        {
+            SetStateLabelVisible(false);
+            return;
+        }
+
+        if (stateLabel == null)
+        {
+            Transform labelTransform = transform.Find(StateLabelObjectName);
+            if (labelTransform != null)
+            {
+                stateLabel = labelTransform.GetComponent<TextMesh>();
+            }
+        }
+
+        if (stateLabel == null)
+        {
+            GameObject labelObject = new GameObject(StateLabelObjectName);
+            labelObject.transform.SetParent(transform, false);
+            stateLabel = labelObject.AddComponent<TextMesh>();
+        }
+
+        stateLabel.transform.localPosition = Vector3.zero;
+        stateLabel.transform.localRotation = Quaternion.identity;
+        stateLabel.transform.localScale = Vector3.one;
+        stateLabel.text = label;
+        stateLabel.anchor = TextAnchor.MiddleCenter;
+        stateLabel.alignment = TextAlignment.Center;
+        stateLabel.fontSize = 64;
+        stateLabel.characterSize = Mathf.Max(0.01f, stateLabelCharacterSize);
+        stateLabel.color = GetOpaqueColor(labelColor);
+
+        MeshRenderer labelRenderer = stateLabel.GetComponent<MeshRenderer>();
+        if (labelRenderer != null)
+        {
+            labelRenderer.sortingLayerID = bodyRenderer.sortingLayerID;
+            labelRenderer.sortingOrder = bodyRenderer.sortingOrder + LabelSortingOrderOffset;
+        }
+
+        stateLabel.gameObject.SetActive(true);
+    }
+
+    private void SetStateLabelVisible(bool isVisible)
+    {
+        if (stateLabel == null)
+        {
+            Transform labelTransform = transform.Find(StateLabelObjectName);
+            if (labelTransform != null)
+            {
+                stateLabel = labelTransform.GetComponent<TextMesh>();
+            }
+        }
+
+        if (stateLabel != null)
+        {
+            stateLabel.gameObject.SetActive(isVisible);
+        }
+    }
+
+    private static int GetInitialHitPoints(BlockType type)
+    {
+        return type == BlockType.Durable ? DurableHitPoints : 1;
+    }
+
+    private static Color GetOpaqueColor(Color color)
+    {
+        color.a = 1f;
+        return color;
     }
 
     private void TryDropItem()
@@ -228,6 +422,9 @@ public class Block : MonoBehaviour
         breakEffectStartScale = Mathf.Max(0.01f, breakEffectStartScale);
         breakEffectEndScale = Mathf.Max(breakEffectStartScale, breakEffectEndScale);
         borderThickness = Mathf.Max(0f, borderThickness);
+        durableBorderThickness = Mathf.Max(0f, durableBorderThickness);
+        indestructibleBorderThickness = Mathf.Max(0f, indestructibleBorderThickness);
+        stateLabelCharacterSize = Mathf.Max(0.01f, stateLabelCharacterSize);
 
         if (borderRenderer != null)
         {

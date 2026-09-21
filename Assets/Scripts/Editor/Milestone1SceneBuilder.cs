@@ -276,11 +276,11 @@ public static class Milestone1SceneBuilder
         SetInt(stageData, "stageId", 1);
         SetString(stageData, "stageName", "Stage 1");
         SetObjectReference(stageData, "backgroundSprite", backgroundSprite);
-        SetInt(stageData, "blockRows", 5);
-        SetInt(stageData, "blockColumns", 10);
-        SetFloat(stageData, "blockSize", 0.6f);
-        SetFloat(stageData, "blockSpacing", 0.12f);
-        SetVector2(stageData, "blockStartPosition", new Vector2(-3.24f, 3.25f));
+        SetInt(stageData, "blockRows", 8);
+        SetInt(stageData, "blockColumns", 24);
+        SetFloat(stageData, "blockSize", 0.375f);
+        SetFloat(stageData, "blockSpacing", 0f);
+        SetVector2(stageData, "blockStartPosition", new Vector2(-4.3125f, 3.25f));
         SetFloat(stageData, "ballSpeed", 7f);
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
@@ -335,11 +335,11 @@ public static class Milestone1SceneBuilder
 
         SetInt(stageData, "stageId", 2);
         SetString(stageData, "stageName", "Stage 2");
-        SetInt(stageData, "blockRows", 6);
-        SetInt(stageData, "blockColumns", 8);
-        SetFloat(stageData, "blockSize", 0.6f);
-        SetFloat(stageData, "blockSpacing", 0.12f);
-        SetVector2(stageData, "blockStartPosition", new Vector2(-2.52f, 3.25f));
+        SetInt(stageData, "blockRows", 8);
+        SetInt(stageData, "blockColumns", 15);
+        SetFloat(stageData, "blockSize", 0.375f);
+        SetFloat(stageData, "blockSpacing", 0f);
+        SetVector2(stageData, "blockStartPosition", new Vector2(-2.625f, 3.25f));
         SetFloat(stageData, "ballSpeed", 7.5f);
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
@@ -375,11 +375,11 @@ public static class Milestone1SceneBuilder
 
         SetInt(stageData, "stageId", 3);
         SetString(stageData, "stageName", "Stage 3");
-        SetInt(stageData, "blockRows", 7);
-        SetInt(stageData, "blockColumns", 9);
-        SetFloat(stageData, "blockSize", 0.6f);
-        SetFloat(stageData, "blockSpacing", 0.12f);
-        SetVector2(stageData, "blockStartPosition", new Vector2(-2.88f, 3.25f));
+        SetInt(stageData, "blockRows", 10);
+        SetInt(stageData, "blockColumns", 15);
+        SetFloat(stageData, "blockSize", 0.375f);
+        SetFloat(stageData, "blockSpacing", 0f);
+        SetVector2(stageData, "blockStartPosition", new Vector2(-2.625f, 3.25f));
         SetFloat(stageData, "ballSpeed", 8f);
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
@@ -491,7 +491,7 @@ public static class Milestone1SceneBuilder
     private static void CreateBallPrefab(Sprite ballSprite, PhysicsMaterial2D bouncyMaterial)
     {
         GameObject ball = new GameObject("Ball");
-        ball.transform.localScale = new Vector3(0.34f, 0.34f, 1f);
+        ball.transform.localScale = new Vector3(0.22f, 0.22f, 1f);
 
         SpriteRenderer renderer = ball.AddComponent<SpriteRenderer>();
         renderer.sprite = ballSprite;
@@ -511,6 +511,7 @@ public static class Milestone1SceneBuilder
         SetFloat(controller, "moveSpeed", 7f);
         SetFloat(controller, "lostY", -5.6f);
         SetFloat(controller, "minimumVerticalSpeed", 1.5f);
+        SetVector2(controller, "paddleOffset", new Vector2(0f, 0.3f));
 
         SavePrefab(ball, BallPrefabPath);
     }

@@ -65,3 +65,4 @@ MonoBehaviour:
   itemPrefab: {fileID: 100005, guid: e50a025544c8417ea72430b0e9301caa, type: 3}
   itemDropChance: 0.5
   itemEffectManager: {fileID: 0}
+  borderThickness: 0.015

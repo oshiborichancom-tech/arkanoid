@@ -140,7 +140,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 15
   m_Sprite: {fileID: 0}
-  m_Color: {r: 0.3, g: 0.68, b: 1, a: 1}
+  m_Color: {r: 0.1, g: 0.05, b: 0.14, a: 0.96}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -167,13 +167,17 @@ MonoBehaviour:
   destroyY: -5.8
   itemEffectManager: {fileID: 0}
   spriteRenderer: {fileID: 100004}
+  borderRenderer: {fileID: 0}
   labelText: {fileID: 5642370502838405261}
-  paddleExpandColor: {r: 0.3, g: 0.68, b: 1, a: 1}
-  lifeUpColor: {r: 0.35, g: 0.92, b: 0.55, a: 1}
-  addBallsColor: {r: 1, g: 0.72, b: 0.22, a: 1}
+  innerColor: {r: 0.1, g: 0.05, b: 0.14, a: 0.96}
+  paddleExpandColor: {r: 1, g: 0.31, b: 0.85, a: 1}
+  lifeUpColor: {r: 1, g: 0.36, b: 0.66, a: 1}
+  addBallsColor: {r: 0.39, g: 0.96, b: 1, a: 1}
   labelColor: {r: 1, g: 1, b: 1, a: 1}
   labelFontSize: 64
   labelCharacterSize: 0.12
+  borderScale: 1.18
+  useGeneratedCircleSprite: 1
 --- !u!1 &2981117506786211353
 GameObject:
   m_ObjectHideFlags: 0

@@ -7,10 +7,11 @@ using UnityEngine.UI;
 public class Milestone1SceneBootstrap : MonoBehaviour
 {
     private const string DefaultStageName = "Stage 1";
-    private const int DefaultBlockRows = 5;
-    private const int DefaultBlockColumns = 10;
-    private const float DefaultBlockSize = 0.6f;
-    private const float DefaultBlockSpacing = 0.01f;
+    private const int DefaultBlockRows = 8;
+    private const int DefaultBlockColumns = 24;
+    private const float DefaultBlockSize = 0.375f;
+    private const float DefaultBlockSpacing = 0f;
+    private const float DefaultBallDiameter = 0.22f;
     private const float DefaultBallSpeed = 7f;
     private const float DefaultPaddleSpeed = 9f;
     private const int DefaultInitialLives = 3;
@@ -44,7 +45,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private static readonly Color ThemePerfect = new Color32(0xFF, 0xD8, 0x66, 0xFF);
     private static readonly Color ThemeLocked = new Color32(0x55, 0x50, 0x5A, 0xFF);
     private static readonly Color ThemeDanger = new Color32(0xFF, 0x5D, 0xA8, 0xFF);
-    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-3.24f, 3.25f);
+    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-4.3125f, 3.25f);
     private static readonly Vector2 DefaultPlayAreaCenter = Vector2.zero;
     private static readonly Vector2 DefaultPlayAreaSize = new Vector2(10f, 9.6f);
 
@@ -1011,7 +1012,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             return false;
         }
 
-        bool hasBlock = false;
+        bool hasClearTarget = false;
         rows = settings.BlockLayout.Length;
 
         for (int row = 0; row < settings.BlockLayout.Length; row++)
@@ -1025,14 +1026,14 @@ public class Milestone1SceneBootstrap : MonoBehaviour
             columns = Mathf.Max(columns, rowText.Length);
             for (int column = 0; column < rowText.Length; column++)
             {
-                if (rowText[column] == '1')
+                if (rowText[column] == '1' || rowText[column] == '2')
                 {
-                    hasBlock = true;
+                    hasClearTarget = true;
                 }
             }
         }
 
-        return rows > 0 && columns > 0 && hasBlock;
+        return rows > 0 && columns > 0 && hasClearTarget;
     }
 
     private static void CreatePlayAreaWalls(Rect playAreaBounds, float wallThickness, PhysicsMaterial2D material)
@@ -1141,7 +1142,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     {
         GameObject ball = new GameObject("Ball");
         ball.transform.position = new Vector3(playAreaBounds.center.x, playAreaBounds.yMin + 1.3f, 0f);
-        ball.transform.localScale = new Vector3(0.34f, 0.34f, 1f);
+        ball.transform.localScale = new Vector3(DefaultBallDiameter, DefaultBallDiameter, 1f);
 
         SpriteRenderer renderer = ball.AddComponent<SpriteRenderer>();
         renderer.sprite = ballSprite;
