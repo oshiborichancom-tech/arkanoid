@@ -8,8 +8,8 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 {
     private const string DefaultStageName = "Stage 1";
     private const int DefaultBlockRows = 8;
-    private const int DefaultBlockColumns = 24;
-    private const float DefaultBlockSize = 0.375f;
+    private const int DefaultBlockColumns = 26;
+    private const float DefaultBlockSize = 10f / 26f;
     private const float DefaultBlockSpacing = 0f;
     private const float DefaultBallDiameter = 0.22f;
     private const float DefaultBallSpeed = 7f;
@@ -45,9 +45,44 @@ public class Milestone1SceneBootstrap : MonoBehaviour
     private static readonly Color ThemePerfect = new Color32(0xFF, 0xD8, 0x66, 0xFF);
     private static readonly Color ThemeLocked = new Color32(0x55, 0x50, 0x5A, 0xFF);
     private static readonly Color ThemeDanger = new Color32(0xFF, 0x5D, 0xA8, 0xFF);
-    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(-4.3125f, 3.25f);
+    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(
+        -(DefaultBlockColumns - 1) * DefaultBlockSize * 0.5f,
+        3.25f);
     private static readonly Vector2 DefaultPlayAreaCenter = Vector2.zero;
     private static readonly Vector2 DefaultPlayAreaSize = new Vector2(10f, 9.6f);
+
+#if UNITY_EDITOR
+    public static Vector2 EditorPlayAreaCenter => DefaultPlayAreaCenter;
+    public static Vector2 EditorPlayAreaSize => DefaultPlayAreaSize;
+
+    public static Vector2 CalculateEditorBackgroundScale(
+        Vector2 targetSize,
+        Vector2 spriteSize,
+        BackgroundFitMode fitMode)
+    {
+        return CalculateBackgroundScale(targetSize, spriteSize, fitMode);
+    }
+
+    public static Vector2 CalculateEditorBlockStart(StageData stageData, int rows, int columns)
+    {
+        if (stageData == null)
+        {
+            return Vector2.zero;
+        }
+
+        Vector2 safePlayAreaSize = GetSafePlayAreaSize(DefaultPlayAreaSize);
+        Rect playAreaBounds = new Rect(
+            DefaultPlayAreaCenter - safePlayAreaSize * 0.5f,
+            safePlayAreaSize);
+        return CalculateBlockStartWithinPlayArea(
+            stageData.BlockStartPosition,
+            rows,
+            columns,
+            stageData.BlockSize,
+            stageData.BlockSpacing,
+            playAreaBounds);
+    }
+#endif
 
     private enum SceneKind
     {
@@ -900,7 +935,17 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         if (logAppliedBackground)
         {
-            Debug.Log($"Background applied: sprite={renderer.sprite.name}, mode={settings.BackgroundFitMode}, playAreaSize={targetSize}, spriteSize={spriteSize}, scale={finalScale}, offset={settings.BackgroundOffset}");
+            Bounds spriteBounds = renderer.sprite.bounds;
+            Vector2 backgroundWorldMin = backgroundPosition + Vector2.Scale(
+                new Vector2(spriteBounds.min.x, spriteBounds.min.y),
+                new Vector2(finalScale.x, finalScale.y));
+            Vector2 backgroundWorldMax = backgroundPosition + Vector2.Scale(
+                new Vector2(spriteBounds.max.x, spriteBounds.max.y),
+                new Vector2(finalScale.x, finalScale.y));
+            Debug.Log(
+                $"Background applied: sprite={renderer.sprite.name}, mode={settings.BackgroundFitMode}, " +
+                $"playAreaSize={targetSize}, spriteSize={spriteSize}, scale={finalScale}, " +
+                $"offset={settings.BackgroundOffset}, worldX=[{backgroundWorldMin.x:F4}, {backgroundWorldMax.x:F4}]");
         }
     }
 
@@ -944,31 +989,37 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         return new Rect(settings.PlayAreaCenter - safeSize * 0.5f, safeSize);
     }
 
-    private static Vector2 GetBlockGridSize(StageRuntimeSettings settings)
-    {
-        float safeBlockSize = Mathf.Max(0.1f, settings.BlockSize);
-        float safeSpacing = Mathf.Max(0f, settings.BlockSpacing);
-        GetEffectiveBlockGridDimensions(settings, out int safeRows, out int safeColumns);
-
-        float width = safeColumns * safeBlockSize + (safeColumns - 1) * safeSpacing;
-        float height = safeRows * safeBlockSize + (safeRows - 1) * safeSpacing;
-        return new Vector2(width, height);
-    }
-
-    private static Vector2 GetBlockGridCenter(StageRuntimeSettings settings)
-    {
-        float step = Mathf.Max(0.1f, settings.BlockSize) + Mathf.Max(0f, settings.BlockSpacing);
-        GetEffectiveBlockGridDimensions(settings, out int safeRows, out int safeColumns);
-
-        return settings.BlockStartPosition + new Vector2(
-            (safeColumns - 1) * step * 0.5f,
-            -(safeRows - 1) * step * 0.5f);
-    }
-
     private static Vector2 GetBlockStartPositionWithinPlayArea(StageRuntimeSettings settings, Rect playAreaBounds)
     {
-        Vector2 gridSize = GetBlockGridSize(settings);
-        Vector2 gridCenter = GetBlockGridCenter(settings);
+        GetEffectiveBlockGridDimensions(settings, out int rows, out int columns);
+        return CalculateBlockStartWithinPlayArea(
+            settings.BlockStartPosition,
+            rows,
+            columns,
+            settings.BlockSize,
+            settings.BlockSpacing,
+            playAreaBounds);
+    }
+
+    private static Vector2 CalculateBlockStartWithinPlayArea(
+        Vector2 requestedStart,
+        int rows,
+        int columns,
+        float blockSize,
+        float spacing,
+        Rect playAreaBounds)
+    {
+        int safeRows = Mathf.Max(1, rows);
+        int safeColumns = Mathf.Max(1, columns);
+        float safeBlockSize = Mathf.Max(0.1f, blockSize);
+        float safeSpacing = Mathf.Max(0f, spacing);
+        float step = safeBlockSize + safeSpacing;
+        Vector2 gridSize = new Vector2(
+            safeColumns * safeBlockSize + (safeColumns - 1) * safeSpacing,
+            safeRows * safeBlockSize + (safeRows - 1) * safeSpacing);
+        Vector2 gridCenter = requestedStart + new Vector2(
+            (safeColumns - 1) * step * 0.5f,
+            -(safeRows - 1) * step * 0.5f);
         Vector2 clampedCenter = gridCenter;
 
         float minCenterX = playAreaBounds.xMin + gridSize.x * 0.5f;
@@ -982,9 +1033,6 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         clampedCenter.y = minCenterY <= maxCenterY
             ? Mathf.Clamp(gridCenter.y, minCenterY, maxCenterY)
             : playAreaBounds.center.y;
-
-        float step = Mathf.Max(0.1f, settings.BlockSize) + Mathf.Max(0f, settings.BlockSpacing);
-        GetEffectiveBlockGridDimensions(settings, out int safeRows, out int safeColumns);
 
         return clampedCenter - new Vector2(
             (safeColumns - 1) * step * 0.5f,
@@ -1195,6 +1243,7 @@ public class Milestone1SceneBootstrap : MonoBehaviour
 
         BlockGridBuilder builder = new GameObject("BlockGridBuilder").AddComponent<BlockGridBuilder>();
         Vector2 adjustedBlockStartPosition = GetBlockStartPositionWithinPlayArea(settings, playAreaBounds);
+        LogBlockGridBounds(settings, playAreaBounds, adjustedBlockStartPosition);
 
         builder.Configure(
             block,
@@ -1208,6 +1257,31 @@ public class Milestone1SceneBootstrap : MonoBehaviour
         builder.ConfigureItemDrops(itemPrefab, safeDropChance, itemEffectManager);
         builder.ConfigureBlockColor(settings.UseSingleBlockColor, settings.SingleBlockColor);
         builder.ConfigureManualBlockLayout(settings.UseManualBlockLayout, settings.BlockLayout);
+    }
+
+    private static void LogBlockGridBounds(
+        StageRuntimeSettings settings,
+        Rect playAreaBounds,
+        Vector2 adjustedBlockStartPosition)
+    {
+        GetEffectiveBlockGridDimensions(settings, out int rows, out int columns);
+        float blockSize = Mathf.Max(0.1f, settings.BlockSize);
+        float spacing = Mathf.Max(0f, settings.BlockSpacing);
+        float step = blockSize + spacing;
+        float visualSize = blockSize + BlockGridBuilder.DefaultVisualOverlap;
+        float leftVisualEdge = adjustedBlockStartPosition.x - visualSize * 0.5f;
+        float rightVisualEdge = adjustedBlockStartPosition.x +
+                                (columns - 1) * step +
+                                visualSize * 0.5f;
+        float leftGap = leftVisualEdge - playAreaBounds.xMin;
+        float rightGap = playAreaBounds.xMax - rightVisualEdge;
+
+        Debug.Log(
+            $"Block grid bounds: rows={rows}, columns={columns}, blockSize={blockSize:F7}, " +
+            $"spacing={spacing:F4}, startCenterX={adjustedBlockStartPosition.x:F4}, " +
+            $"wallInsideX=[{playAreaBounds.xMin:F4}, {playAreaBounds.xMax:F4}], " +
+            $"visualX=[{leftVisualEdge:F4}, {rightVisualEdge:F4}], " +
+            $"gaps=[left:{leftGap:F4}, right:{rightGap:F4}]");
     }
 
     private static ItemController CreateItemPrefab(Transform parent)

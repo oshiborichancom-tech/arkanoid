@@ -5,9 +5,12 @@ using UnityEngine;
 public class StageBlockEditorWindow : EditorWindow
 {
     private const string WindowTitle = "Stage Block Editor";
+    private const int FixedRows = 25;
+    private const int FixedColumns = 26;
     private const int MinCellSize = 16;
     private const int MaxCellSize = 40;
     private const int GridControlHint = 0x534245;
+    private const float CoordinateTolerance = 0.0001f;
 
     private static readonly string[] ToolLabels =
     {
@@ -18,8 +21,8 @@ public class StageBlockEditorWindow : EditorWindow
     };
 
     private static readonly Color WindowAccent = new Color32(255, 79, 216, 255);
-    private static readonly Color EmptyColor = new Color32(26, 13, 36, 255);
-    private static readonly Color EmptyBorderColor = new Color32(85, 80, 90, 255);
+    private static readonly Color PreviewBackground = new Color32(26, 13, 36, 255);
+    private static readonly Color GridLineColor = new Color32(255, 214, 245, 255);
     private static readonly Color NormalColor = new Color32(255, 214, 245, 255);
     private static readonly Color DurableColor = new Color32(155, 72, 205, 255);
     private static readonly Color IndestructibleColor = new Color32(48, 40, 56, 255);
@@ -28,16 +31,28 @@ public class StageBlockEditorWindow : EditorWindow
     [SerializeField] private StageData selectedStage;
     [SerializeField] private int selectedTool;
     [SerializeField] private float cellSize = 24f;
+    [SerializeField] private bool showBackground = true;
+    [SerializeField, Range(0f, 1f)] private float backgroundPreviewOpacity = 0.85f;
+    [SerializeField, Range(0f, 1f)] private float blockPreviewOpacity = 0.58f;
 
     private char[,] workingGrid;
     private char[,] loadedGrid;
     private int rowCount;
     private int columnCount;
+    private float blockWorldSize;
+    private float blockStep;
+    private Rect playAreaWorldBounds;
+    private Vector2 fixedGridStartPosition;
     private Vector2 gridScrollPosition;
-    private bool hasUnsavedChanges;
+    private bool hasPendingChanges;
     private bool sourceManualLayoutEnabled;
     private bool loadedFallbackGrid;
     private bool normalizedUnsupportedCharacters;
+    private bool requiresFixedGridConversion;
+    private bool sourceCellsSnapped;
+    private float maximumSnapDistance;
+    private int sourceOutOfBoundsCount;
+    private int sourceCollisionCount;
     private readonly HashSet<int> paintedCells = new HashSet<int>();
     private GUIStyle titleStyle;
     private GUIStyle statusStyle;
@@ -48,14 +63,14 @@ public class StageBlockEditorWindow : EditorWindow
     {
         StageBlockEditorWindow window = GetWindow<StageBlockEditorWindow>();
         window.titleContent = new GUIContent(WindowTitle);
-        window.minSize = new Vector2(560f, 420f);
+        window.minSize = new Vector2(600f, 460f);
         window.Show();
     }
 
     private void OnEnable()
     {
         titleContent = new GUIContent(WindowTitle);
-        minSize = new Vector2(560f, 420f);
+        minSize = new Vector2(600f, 460f);
         Undo.undoRedoPerformed += HandleUndoRedo;
 
         if (selectedStage != null)
@@ -98,7 +113,7 @@ public class StageBlockEditorWindow : EditorWindow
     private void DrawHeader()
     {
         Rect headerRect = EditorGUILayout.GetControlRect(false, 42f);
-        EditorGUI.DrawRect(headerRect, new Color32(26, 13, 36, 255));
+        EditorGUI.DrawRect(headerRect, PreviewBackground);
         EditorGUI.DrawRect(
             new Rect(headerRect.x, headerRect.yMax - 2f, headerRect.width, 2f),
             WindowAccent);
@@ -125,22 +140,46 @@ public class StageBlockEditorWindow : EditorWindow
         if (!sourceManualLayoutEnabled)
         {
             EditorGUILayout.HelpBox(
-                "Manual layout is OFF. The preview uses blockRows x blockColumns filled with normal blocks. " +
+                "Manual layout is OFF. The current blockRows x blockColumns grid was mapped into the fixed field. " +
                 "Saving will enable useManualBlockLayout.",
                 MessageType.Info);
         }
         else if (loadedFallbackGrid)
         {
             EditorGUILayout.HelpBox(
-                "The saved manual layout was empty. The preview uses the full blockRows x blockColumns fallback grid.",
+                "The saved manual layout was empty. The current full-grid fallback was mapped into the fixed field.",
+                MessageType.Warning);
+        }
+
+        if (requiresFixedGridConversion)
+        {
+            EditorGUILayout.HelpBox(
+                $"The source layout is shown inside the fixed {FixedColumns} x {FixedRows} field. " +
+                "The StageData asset is not converted until Save is pressed.",
+                MessageType.Info);
+        }
+
+        if (sourceCellsSnapped)
+        {
+            EditorGUILayout.HelpBox(
+                $"Existing blocks were mapped to the nearest fixed-grid cells. " +
+                $"Maximum position adjustment: {maximumSnapDistance:F4} world units.",
                 MessageType.Warning);
         }
 
         if (normalizedUnsupportedCharacters)
         {
             EditorGUILayout.HelpBox(
-                "Unsupported layout characters were displayed as empty cells. Saving will normalize them to 0.",
+                "Unsupported layout characters were displayed as empty cells. Saving will normalize every cell to 0-3.",
                 MessageType.Warning);
+        }
+
+        if (sourceOutOfBoundsCount > 0 || sourceCollisionCount > 0)
+        {
+            EditorGUILayout.HelpBox(
+                $"The source layout cannot be converted safely. Outside cells: {sourceOutOfBoundsCount}, " +
+                $"overlapping mapped cells: {sourceCollisionCount}. Saving is disabled.",
+                MessageType.Error);
         }
     }
 
@@ -155,8 +194,22 @@ public class StageBlockEditorWindow : EditorWindow
             paintedCells.Clear();
         }
 
-        cellSize = EditorGUILayout.Slider("Cell Size", cellSize, MinCellSize, MaxCellSize);
-        cellSize = Mathf.Round(cellSize);
+        cellSize = Mathf.Round(EditorGUILayout.Slider("Cell Size", cellSize, MinCellSize, MaxCellSize));
+        showBackground = EditorGUILayout.Toggle("Show Background", showBackground);
+
+        EditorGUI.BeginDisabledGroup(!showBackground);
+        backgroundPreviewOpacity = EditorGUILayout.Slider(
+            "Background Opacity",
+            backgroundPreviewOpacity,
+            0f,
+            1f);
+        EditorGUI.EndDisabledGroup();
+
+        blockPreviewOpacity = EditorGUILayout.Slider(
+            "Block Opacity",
+            blockPreviewOpacity,
+            0f,
+            1f);
     }
 
     private void DrawGridSummary()
@@ -164,17 +217,21 @@ public class StageBlockEditorWindow : EditorWindow
         CountCells(out int normal, out int durable, out int indestructible, out int empty);
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField(
-            $"Rows: {rowCount}   Columns: {columnCount}",
-            GUILayout.Width(190f));
+            $"Fixed Field: {columnCount} x {rowCount}",
+            GUILayout.Width(180f));
         EditorGUILayout.LabelField(
             $"1: {normal}   2: {durable}   3: {indestructible}   Empty: {empty}");
         GUILayout.FlexibleSpace();
-        GUILayout.Label(
-            hasUnsavedChanges ? "Unsaved Changes" : "Saved",
-            statusStyle,
-            GUILayout.Width(120f));
+        GUILayout.Label(GetStatusText(), statusStyle, GUILayout.Width(145f));
         EditorGUILayout.EndHorizontal();
 
+        Vector2 gridMin = GetGridWorldMin();
+        Vector2 gridMax = GetGridWorldMax();
+        EditorGUILayout.LabelField(
+            $"PlayArea: X {playAreaWorldBounds.xMin:F3}..{playAreaWorldBounds.xMax:F3}, " +
+            $"Y {playAreaWorldBounds.yMin:F3}..{playAreaWorldBounds.yMax:F3}   |   " +
+            $"Grid coverage: X {gridMin.x:F3}..{gridMax.x:F3}, Y {gridMin.y:F3}..{gridMax.y:F3}",
+            EditorStyles.miniLabel);
         EditorGUILayout.LabelField(
             "Orientation: row 1 is the top of the GameScene; columns run left to right.",
             EditorStyles.miniLabel);
@@ -182,8 +239,15 @@ public class StageBlockEditorWindow : EditorWindow
 
     private void DrawGrid()
     {
-        float gridWidth = Mathf.Max(1, columnCount) * cellSize;
-        float gridHeight = Mathf.Max(1, rowCount) * cellSize;
+        if (blockStep <= 0f)
+        {
+            EditorGUILayout.HelpBox("The selected StageData has an invalid block step.", MessageType.Error);
+            return;
+        }
+
+        float pixelsPerWorldUnit = cellSize / blockStep;
+        float previewWidth = playAreaWorldBounds.width * pixelsPerWorldUnit;
+        float previewHeight = playAreaWorldBounds.height * pixelsPerWorldUnit;
 
         gridScrollPosition = EditorGUILayout.BeginScrollView(
             gridScrollPosition,
@@ -192,21 +256,96 @@ public class StageBlockEditorWindow : EditorWindow
             GUILayout.ExpandWidth(true),
             GUILayout.ExpandHeight(true));
 
-        Rect gridRect = GUILayoutUtility.GetRect(
-            gridWidth,
-            gridHeight,
+        Rect contentRect = GUILayoutUtility.GetRect(
+            previewWidth + 8f,
+            previewHeight + 8f,
             GUILayout.ExpandWidth(false),
             GUILayout.ExpandHeight(false));
+        Rect previewRect = new Rect(
+            contentRect.x + 4f,
+            contentRect.y + 4f,
+            previewWidth,
+            previewHeight);
 
-        DrawGridCells(gridRect);
+        DrawBackgroundPreview(previewRect);
+
+        Vector2 firstCellCenter = WorldToPreview(fixedGridStartPosition, previewRect);
+        Rect gridRect = new Rect(
+            firstCellCenter.x - cellSize * 0.5f,
+            firstCellCenter.y - cellSize * 0.5f,
+            columnCount * cellSize,
+            rowCount * cellSize);
+
+        DrawGridCells(gridRect, pixelsPerWorldUnit);
+        DrawPlayAreaFrame(previewRect);
         HandleGridInput(gridRect);
         EditorGUILayout.EndScrollView();
     }
 
-    private void DrawGridCells(Rect gridRect)
+    private void DrawBackgroundPreview(Rect previewRect)
     {
-        int labelFontSize = Mathf.Clamp(Mathf.RoundToInt(cellSize * 0.5f), 9, 16);
+        EditorGUI.DrawRect(previewRect, PreviewBackground);
+        if (!showBackground || selectedStage == null || selectedStage.BackgroundSprite == null)
+        {
+            return;
+        }
+
+        Sprite sprite = selectedStage.BackgroundSprite;
+        Texture2D texture = sprite.texture;
+        Vector2 spriteSize = sprite.bounds.size;
+        if (texture == null || spriteSize.x <= 0f || spriteSize.y <= 0f)
+        {
+            return;
+        }
+
+        Vector2 fitScale = Milestone1SceneBootstrap.CalculateEditorBackgroundScale(
+            playAreaWorldBounds.size,
+            spriteSize,
+            selectedStage.BackgroundFitMode);
+        Vector2 multiplier = selectedStage.BackgroundScaleMultiplier;
+        Vector2 finalScale = new Vector2(
+            Mathf.Max(0.01f, fitScale.x * multiplier.x),
+            Mathf.Max(0.01f, fitScale.y * multiplier.y));
+
+        Vector2 worldPosition = playAreaWorldBounds.center + selectedStage.BackgroundOffset;
+        Bounds spriteBounds = sprite.bounds;
+        Vector2 worldMin = worldPosition + Vector2.Scale(
+            new Vector2(spriteBounds.min.x, spriteBounds.min.y),
+            finalScale);
+        Vector2 worldMax = worldPosition + Vector2.Scale(
+            new Vector2(spriteBounds.max.x, spriteBounds.max.y),
+            finalScale);
+
+        Vector2 guiTopLeft = WorldToPreview(new Vector2(worldMin.x, worldMax.y), previewRect);
+        Vector2 guiBottomRight = WorldToPreview(new Vector2(worldMax.x, worldMin.y), previewRect);
+        Rect drawRect = Rect.MinMaxRect(
+            guiTopLeft.x,
+            guiTopLeft.y,
+            guiBottomRight.x,
+            guiBottomRight.y);
+        Rect uvRect = GetSpriteUvRect(sprite, texture);
+
+        GUI.BeginClip(previewRect);
+        Color previousColor = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(backgroundPreviewOpacity));
+        Rect clippedDrawRect = new Rect(
+            drawRect.x - previewRect.x,
+            drawRect.y - previewRect.y,
+            drawRect.width,
+            drawRect.height);
+        GUI.DrawTextureWithTexCoords(clippedDrawRect, texture, uvRect, true);
+        GUI.color = previousColor;
+        GUI.EndClip();
+    }
+
+    private void DrawGridCells(Rect gridRect, float pixelsPerWorldUnit)
+    {
+        int labelFontSize = Mathf.Clamp(Mathf.RoundToInt(cellSize * 0.45f), 8, 16);
         cellLabelStyle.fontSize = labelFontSize;
+        float blockPixelSize = Mathf.Clamp(
+            blockWorldSize * pixelsPerWorldUnit,
+            1f,
+            cellSize);
 
         for (int row = 0; row < rowCount; row++)
         {
@@ -217,52 +356,39 @@ public class StageBlockEditorWindow : EditorWindow
                     gridRect.y + row * cellSize,
                     cellSize,
                     cellSize);
-                char value = workingGrid[row, column];
-                DrawCell(cellRect, value);
+                DrawCell(cellRect, workingGrid[row, column], blockPixelSize);
             }
         }
     }
 
-    private void DrawCell(Rect cellRect, char value)
+    private void DrawCell(Rect cellRect, char value, float blockPixelSize)
     {
-        Color fillColor;
-        Color borderColor;
-        Color textColor;
-
-        switch (value)
+        if (value != '0')
         {
-            case '1':
-                fillColor = NormalColor;
-                borderColor = WindowAccent;
-                textColor = new Color32(40, 20, 45, 255);
-                break;
-            case '2':
-                fillColor = DurableColor;
-                borderColor = WindowAccent;
-                textColor = Color.white;
-                break;
-            case '3':
-                fillColor = IndestructibleColor;
-                borderColor = IndestructibleBorderColor;
-                textColor = IndestructibleBorderColor;
-                break;
-            default:
-                fillColor = EmptyColor;
-                borderColor = EmptyBorderColor;
-                textColor = new Color32(145, 135, 150, 255);
-                break;
+            Rect blockRect = new Rect(
+                cellRect.center.x - blockPixelSize * 0.5f,
+                cellRect.center.y - blockPixelSize * 0.5f,
+                blockPixelSize,
+                blockPixelSize);
+            Color fillColor = GetBlockPreviewColor(value);
+            EditorGUI.DrawRect(blockRect, WithAlpha(fillColor, blockPreviewOpacity));
+
+            Color outlineColor = value == '3' ? IndestructibleBorderColor : WindowAccent;
+            DrawRectOutline(blockRect, WithAlpha(outlineColor, Mathf.Max(0.55f, blockPreviewOpacity)), 1f);
         }
 
-        EditorGUI.DrawRect(cellRect, borderColor);
-        Rect innerRect = new Rect(
-            cellRect.x + 1f,
-            cellRect.y + 1f,
-            Mathf.Max(0f, cellRect.width - 2f),
-            Mathf.Max(0f, cellRect.height - 2f));
-        EditorGUI.DrawRect(innerRect, fillColor);
+        DrawRectOutline(cellRect, WithAlpha(GridLineColor, 0.38f), 1f);
+        cellLabelStyle.normal.textColor = value == '3'
+            ? IndestructibleBorderColor
+            : value == '0'
+                ? new Color32(190, 180, 195, 205)
+                : Color.white;
+        GUI.Label(cellRect, value.ToString(), cellLabelStyle);
+    }
 
-        cellLabelStyle.normal.textColor = textColor;
-        GUI.Label(cellRect, value == '0' ? "0" : value.ToString(), cellLabelStyle);
+    private void DrawPlayAreaFrame(Rect previewRect)
+    {
+        DrawRectOutline(previewRect, WithAlpha(IndestructibleBorderColor, 0.85f), 2f);
     }
 
     private void HandleGridInput(Rect gridRect)
@@ -323,7 +449,7 @@ public class StageBlockEditorWindow : EditorWindow
         }
 
         workingGrid[row, column] = paintValue;
-        hasUnsavedChanges = !AreGridsEqual(workingGrid, loadedGrid);
+        hasPendingChanges = !AreGridsEqual(workingGrid, loadedGrid);
         Repaint();
     }
 
@@ -332,13 +458,16 @@ public class StageBlockEditorWindow : EditorWindow
         EditorGUILayout.Space(4f);
         EditorGUILayout.BeginHorizontal();
 
-        GUI.enabled = selectedStage != null && workingGrid != null;
-        if (GUILayout.Button("Save", GUILayout.Height(28f)))
+        GUI.enabled = selectedStage != null &&
+                      workingGrid != null &&
+                      sourceOutOfBoundsCount == 0 &&
+                      sourceCollisionCount == 0;
+        if (GUILayout.Button("Save Fixed Layout", GUILayout.Height(28f)))
         {
             SaveLayout();
         }
 
-        GUI.enabled = selectedStage != null && workingGrid != null && hasUnsavedChanges;
+        GUI.enabled = selectedStage != null && workingGrid != null && hasPendingChanges;
         if (GUILayout.Button("Revert", GUILayout.Height(28f)))
         {
             RevertLayout();
@@ -350,7 +479,7 @@ public class StageBlockEditorWindow : EditorWindow
 
     private void TryChangeStage(StageData candidate)
     {
-        if (hasUnsavedChanges)
+        if (hasPendingChanges)
         {
             bool discard = EditorUtility.DisplayDialog(
                 WindowTitle,
@@ -394,6 +523,7 @@ public class StageBlockEditorWindow : EditorWindow
 
         if (manualProperty == null || layoutProperty == null || rowsProperty == null || columnsProperty == null)
         {
+            selectedStage = null;
             ClearWorkingState();
             EditorUtility.DisplayDialog(
                 WindowTitle,
@@ -402,71 +532,134 @@ public class StageBlockEditorWindow : EditorWindow
             return;
         }
 
+        rowCount = FixedRows;
+        columnCount = FixedColumns;
+        blockWorldSize = Mathf.Max(0.1f, stage.BlockSize);
+        blockStep = blockWorldSize + Mathf.Max(0f, stage.BlockSpacing);
+        Vector2 playAreaCenter = Milestone1SceneBootstrap.EditorPlayAreaCenter;
+        Vector2 playAreaSize = Milestone1SceneBootstrap.EditorPlayAreaSize;
+        playAreaWorldBounds = new Rect(playAreaCenter - playAreaSize * 0.5f, playAreaSize);
+        fixedGridStartPosition = Milestone1SceneBootstrap.CalculateEditorBlockStart(
+            stage,
+            rowCount,
+            columnCount);
+        workingGrid = CreateFilledGrid(rowCount, columnCount, '0');
+
         sourceManualLayoutEnabled = manualProperty.boolValue;
         normalizedUnsupportedCharacters = false;
         loadedFallbackGrid = false;
+        sourceCellsSnapped = false;
+        maximumSnapDistance = 0f;
+        sourceOutOfBoundsCount = 0;
+        sourceCollisionCount = 0;
 
-        if (sourceManualLayoutEnabled && TryLoadManualGrid(layoutProperty))
+        int sourceRows = 0;
+        int sourceColumns = 0;
+        bool loadedManual = sourceManualLayoutEnabled &&
+                            TryGetLayoutDimensions(layoutProperty, out sourceRows, out sourceColumns);
+        if (loadedManual)
         {
-            loadedFallbackGrid = false;
+            MapManualLayoutToFixedGrid(layoutProperty, sourceRows, sourceColumns);
+            requiresFixedGridConversion = !IsFixedLayout(layoutProperty);
         }
         else
         {
-            rowCount = Mathf.Max(1, rowsProperty.intValue);
-            columnCount = Mathf.Max(1, columnsProperty.intValue);
-            workingGrid = CreateFilledGrid(rowCount, columnCount, '1');
+            sourceRows = Mathf.Max(1, rowsProperty.intValue);
+            sourceColumns = Mathf.Max(1, columnsProperty.intValue);
+            MapFullGridToFixedGrid(stage, sourceRows, sourceColumns);
             loadedFallbackGrid = sourceManualLayoutEnabled;
+            requiresFixedGridConversion = true;
         }
 
         loadedGrid = CloneGrid(workingGrid);
-        hasUnsavedChanges = false;
+        hasPendingChanges = false;
         gridScrollPosition = Vector2.zero;
         paintedCells.Clear();
     }
 
-    private bool TryLoadManualGrid(SerializedProperty layoutProperty)
+    private void MapManualLayoutToFixedGrid(
+        SerializedProperty layoutProperty,
+        int sourceRows,
+        int sourceColumns)
     {
-        int rows = layoutProperty.arraySize;
-        if (rows <= 0)
-        {
-            return false;
-        }
-
-        int columns = 0;
-        for (int row = 0; row < rows; row++)
-        {
-            string rowText = layoutProperty.GetArrayElementAtIndex(row).stringValue ?? string.Empty;
-            columns = Mathf.Max(columns, rowText.Length);
-        }
-
-        if (columns <= 0)
-        {
-            return false;
-        }
-
-        rowCount = rows;
-        columnCount = columns;
-        workingGrid = CreateFilledGrid(rowCount, columnCount, '0');
-
-        for (int row = 0; row < rowCount; row++)
+        Vector2 sourceStart = Milestone1SceneBootstrap.CalculateEditorBlockStart(
+            selectedStage,
+            sourceRows,
+            sourceColumns);
+        for (int row = 0; row < sourceRows; row++)
         {
             string rowText = layoutProperty.GetArrayElementAtIndex(row).stringValue ?? string.Empty;
             for (int column = 0; column < rowText.Length; column++)
             {
                 char value = rowText[column];
-                if (IsSupportedLayoutValue(value))
+                if (!IsSupportedLayoutValue(value))
                 {
-                    workingGrid[row, column] = NormalizeLayoutValue(value);
-                }
-                else
-                {
-                    workingGrid[row, column] = '0';
                     normalizedUnsupportedCharacters = true;
+                    continue;
                 }
+
+                value = NormalizeLayoutValue(value);
+                if (value == '0')
+                {
+                    continue;
+                }
+
+                Vector2 worldPosition = sourceStart + new Vector2(
+                    column * blockStep,
+                    -row * blockStep);
+                MapBlockToFixedGrid(worldPosition, value);
             }
         }
+    }
 
-        return true;
+    private void MapFullGridToFixedGrid(StageData stage, int sourceRows, int sourceColumns)
+    {
+        Vector2 sourceStart = Milestone1SceneBootstrap.CalculateEditorBlockStart(
+            stage,
+            sourceRows,
+            sourceColumns);
+        for (int row = 0; row < sourceRows; row++)
+        {
+            for (int column = 0; column < sourceColumns; column++)
+            {
+                Vector2 worldPosition = sourceStart + new Vector2(
+                    column * blockStep,
+                    -row * blockStep);
+                MapBlockToFixedGrid(worldPosition, '1');
+            }
+        }
+    }
+
+    private void MapBlockToFixedGrid(Vector2 worldPosition, char value)
+    {
+        float columnPosition = (worldPosition.x - fixedGridStartPosition.x) / blockStep;
+        float rowPosition = (fixedGridStartPosition.y - worldPosition.y) / blockStep;
+        int column = Mathf.FloorToInt(columnPosition + 0.5f);
+        int row = Mathf.FloorToInt(rowPosition + 0.5f);
+
+        if (row < 0 || row >= rowCount || column < 0 || column >= columnCount)
+        {
+            sourceOutOfBoundsCount++;
+            return;
+        }
+
+        Vector2 mappedWorldPosition = fixedGridStartPosition + new Vector2(
+            column * blockStep,
+            -row * blockStep);
+        float snapDistance = Vector2.Distance(worldPosition, mappedWorldPosition);
+        if (snapDistance > CoordinateTolerance)
+        {
+            sourceCellsSnapped = true;
+            maximumSnapDistance = Mathf.Max(maximumSnapDistance, snapDistance);
+        }
+
+        if (workingGrid[row, column] != '0')
+        {
+            sourceCollisionCount++;
+            return;
+        }
+
+        workingGrid[row, column] = value;
     }
 
     private void SaveLayout()
@@ -491,11 +684,9 @@ public class StageBlockEditorWindow : EditorWindow
             return;
         }
 
-        Undo.RecordObject(selectedStage, "Save Stage Block Layout");
         SerializedObject serializedStage = new SerializedObject(selectedStage);
         SerializedProperty layoutProperty = serializedStage.FindProperty("blockLayout");
         SerializedProperty manualProperty = serializedStage.FindProperty("useManualBlockLayout");
-
         if (layoutProperty == null || manualProperty == null)
         {
             EditorUtility.DisplayDialog(
@@ -505,8 +696,9 @@ public class StageBlockEditorWindow : EditorWindow
             return;
         }
 
-        layoutProperty.arraySize = rowCount;
-        for (int row = 0; row < rowCount; row++)
+        Undo.RecordObject(selectedStage, "Save Fixed Stage Block Layout");
+        layoutProperty.arraySize = FixedRows;
+        for (int row = 0; row < FixedRows; row++)
         {
             layoutProperty.GetArrayElementAtIndex(row).stringValue = BuildRowString(row);
         }
@@ -519,9 +711,14 @@ public class StageBlockEditorWindow : EditorWindow
         sourceManualLayoutEnabled = true;
         loadedFallbackGrid = false;
         normalizedUnsupportedCharacters = false;
+        requiresFixedGridConversion = false;
+        sourceCellsSnapped = false;
+        maximumSnapDistance = 0f;
+        sourceOutOfBoundsCount = 0;
+        sourceCollisionCount = 0;
         loadedGrid = CloneGrid(workingGrid);
-        hasUnsavedChanges = false;
-        ShowNotification(new GUIContent("Block layout saved."));
+        hasPendingChanges = false;
+        ShowNotification(new GUIContent("Fixed block layout saved."));
         Repaint();
     }
 
@@ -539,15 +736,17 @@ public class StageBlockEditorWindow : EditorWindow
 
     private bool ValidateGrid(out string errorMessage)
     {
-        if (rowCount < 1)
+        if (sourceOutOfBoundsCount > 0 || sourceCollisionCount > 0)
         {
-            errorMessage = "The layout must contain at least one row.";
+            errorMessage =
+                "The existing layout does not fit the fixed grid without losing blocks. " +
+                "No StageData changes were made.";
             return false;
         }
 
-        if (columnCount < 1)
+        if (rowCount != FixedRows || columnCount != FixedColumns)
         {
-            errorMessage = "The layout must contain at least one column.";
+            errorMessage = $"The layout must remain {FixedColumns} columns x {FixedRows} rows.";
             return false;
         }
 
@@ -583,9 +782,44 @@ public class StageBlockEditorWindow : EditorWindow
         return true;
     }
 
+    private static bool TryGetLayoutDimensions(
+        SerializedProperty layoutProperty,
+        out int rows,
+        out int columns)
+    {
+        rows = layoutProperty.arraySize;
+        columns = 0;
+        for (int row = 0; row < rows; row++)
+        {
+            string rowText = layoutProperty.GetArrayElementAtIndex(row).stringValue ?? string.Empty;
+            columns = Mathf.Max(columns, rowText.Length);
+        }
+
+        return rows > 0 && columns > 0;
+    }
+
+    private static bool IsFixedLayout(SerializedProperty layoutProperty)
+    {
+        if (layoutProperty.arraySize != FixedRows)
+        {
+            return false;
+        }
+
+        for (int row = 0; row < FixedRows; row++)
+        {
+            string rowText = layoutProperty.GetArrayElementAtIndex(row).stringValue ?? string.Empty;
+            if (rowText.Length != FixedColumns)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void HandleUndoRedo()
     {
-        if (selectedStage != null && !hasUnsavedChanges)
+        if (selectedStage != null && !hasPendingChanges)
         {
             LoadStage(selectedStage);
         }
@@ -599,10 +833,19 @@ public class StageBlockEditorWindow : EditorWindow
         loadedGrid = null;
         rowCount = 0;
         columnCount = 0;
-        hasUnsavedChanges = false;
+        blockWorldSize = 0f;
+        blockStep = 0f;
+        playAreaWorldBounds = default;
+        fixedGridStartPosition = Vector2.zero;
+        hasPendingChanges = false;
         sourceManualLayoutEnabled = false;
         loadedFallbackGrid = false;
         normalizedUnsupportedCharacters = false;
+        requiresFixedGridConversion = false;
+        sourceCellsSnapped = false;
+        maximumSnapDistance = 0f;
+        sourceOutOfBoundsCount = 0;
+        sourceCollisionCount = 0;
         paintedCells.Clear();
     }
 
@@ -643,13 +886,23 @@ public class StageBlockEditorWindow : EditorWindow
 
     private string BuildRowString(int row)
     {
-        char[] values = new char[columnCount];
-        for (int column = 0; column < columnCount; column++)
+        char[] values = new char[FixedColumns];
+        for (int column = 0; column < FixedColumns; column++)
         {
             values[column] = workingGrid[row, column];
         }
 
         return new string(values);
+    }
+
+    private string GetStatusText()
+    {
+        if (hasPendingChanges)
+        {
+            return "Unsaved Changes";
+        }
+
+        return requiresFixedGridConversion ? "Preview Only" : "Saved Fixed Layout";
     }
 
     private char GetSelectedPaintValue()
@@ -665,6 +918,82 @@ public class StageBlockEditorWindow : EditorWindow
             default:
                 return '0';
         }
+    }
+
+    private Vector2 WorldToPreview(Vector2 worldPosition, Rect previewRect)
+    {
+        float normalizedX = Mathf.InverseLerp(
+            playAreaWorldBounds.xMin,
+            playAreaWorldBounds.xMax,
+            worldPosition.x);
+        float normalizedY = Mathf.InverseLerp(
+            playAreaWorldBounds.yMin,
+            playAreaWorldBounds.yMax,
+            worldPosition.y);
+        return new Vector2(
+            previewRect.x + normalizedX * previewRect.width,
+            previewRect.y + (1f - normalizedY) * previewRect.height);
+    }
+
+    private Vector2 GetGridWorldMin()
+    {
+        return new Vector2(
+            fixedGridStartPosition.x - blockWorldSize * 0.5f,
+            fixedGridStartPosition.y - (rowCount - 1) * blockStep - blockWorldSize * 0.5f);
+    }
+
+    private Vector2 GetGridWorldMax()
+    {
+        return new Vector2(
+            fixedGridStartPosition.x + (columnCount - 1) * blockStep + blockWorldSize * 0.5f,
+            fixedGridStartPosition.y + blockWorldSize * 0.5f);
+    }
+
+    private static Rect GetSpriteUvRect(Sprite sprite, Texture2D texture)
+    {
+        try
+        {
+            Rect textureRect = sprite.textureRect;
+            return new Rect(
+                textureRect.x / texture.width,
+                textureRect.y / texture.height,
+                textureRect.width / texture.width,
+                textureRect.height / texture.height);
+        }
+        catch (UnityException)
+        {
+            return new Rect(0f, 0f, 1f, 1f);
+        }
+    }
+
+    private static Color GetBlockPreviewColor(char value)
+    {
+        switch (value)
+        {
+            case '1':
+                return NormalColor;
+            case '2':
+                return DurableColor;
+            case '3':
+                return IndestructibleColor;
+            default:
+                return Color.clear;
+        }
+    }
+
+    private static void DrawRectOutline(Rect rect, Color color, float thickness)
+    {
+        float safeThickness = Mathf.Max(1f, thickness);
+        EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, safeThickness), color);
+        EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - safeThickness, rect.width, safeThickness), color);
+        EditorGUI.DrawRect(new Rect(rect.x, rect.y, safeThickness, rect.height), color);
+        EditorGUI.DrawRect(new Rect(rect.xMax - safeThickness, rect.y, safeThickness, rect.height), color);
+    }
+
+    private static Color WithAlpha(Color color, float alpha)
+    {
+        color.a = Mathf.Clamp01(alpha);
+        return color;
     }
 
     private static bool IsSupportedLayoutValue(char value)
@@ -761,9 +1090,11 @@ public class StageBlockEditorWindow : EditorWindow
             };
         }
 
-        statusStyle.normal.textColor = hasUnsavedChanges
+        statusStyle.normal.textColor = hasPendingChanges
             ? new Color32(255, 216, 102, 255)
-            : new Color32(100, 245, 255, 255);
+            : requiresFixedGridConversion
+                ? WindowAccent
+                : new Color32(100, 245, 255, 255);
 
         if (cellLabelStyle == null)
         {

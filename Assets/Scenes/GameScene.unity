@@ -172,10 +172,10 @@ MonoBehaviour:
   stageName: Stage 1
   fallbackBackgroundSprite: {fileID: 0}
   blockRows: 8
-  blockColumns: 24
-  blockSize: 0.375
+  blockColumns: 26
+  blockSize: 0.3846154
   blockSpacing: 0
-  blockStartPosition: {x: -4.3125, y: 3.25}
+  blockStartPosition: {x: -4.8076925, y: 3.25}
   ballSpeed: 7
   paddleSpeed: 9
   initialLives: 3

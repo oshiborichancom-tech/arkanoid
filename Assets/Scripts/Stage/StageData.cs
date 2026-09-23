@@ -10,6 +10,11 @@ public enum BackgroundFitMode
 [CreateAssetMenu(fileName = "StageData", menuName = "Arkanoid/Stage Data")]
 public class StageData : ScriptableObject
 {
+    private const float DefaultBlockSize = 10f / 26f;
+    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(
+        -(26 - 1) * DefaultBlockSize * 0.5f,
+        3.25f);
+
     [SerializeField, Min(1)] private int stageId = 1;
     [SerializeField] private string stageName = "Stage 1";
 
@@ -21,10 +26,10 @@ public class StageData : ScriptableObject
 
     [Header("Blocks")]
     [SerializeField, Min(1)] private int blockRows = 8;
-    [SerializeField, Min(1)] private int blockColumns = 24;
-    [SerializeField, Min(0.1f)] private float blockSize = 0.375f;
+    [SerializeField, Min(1)] private int blockColumns = 26;
+    [SerializeField, Min(0.1f)] private float blockSize = DefaultBlockSize;
     [SerializeField, Min(0f)] private float blockSpacing = 0f;
-    [SerializeField] private Vector2 blockStartPosition = new Vector2(-4.3125f, 3.25f);
+    [SerializeField] private Vector2 blockStartPosition = DefaultBlockStartPosition;
     [SerializeField] private bool useSingleBlockColor = true;
     [SerializeField] private Color singleBlockColor = new Color(0.75f, 0.75f, 0.75f, 1f);
     [SerializeField] private bool useManualBlockLayout = false;
@@ -32,14 +37,14 @@ public class StageData : ScriptableObject
     [SerializeField]
     private string[] blockLayout =
     {
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111"
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111"
     };
 
     [Header("Player")]

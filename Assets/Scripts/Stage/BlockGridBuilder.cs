@@ -2,16 +2,24 @@ using UnityEngine;
 
 public class BlockGridBuilder : MonoBehaviour
 {
+    public const float DefaultVisualOverlap = 0.004f;
+    public const float DefaultColliderInset = 0.001f;
+
+    private const float DefaultBlockSize = 10f / 26f;
+    private static readonly Vector2 DefaultBlockStartPosition = new Vector2(
+        -(26 - 1) * DefaultBlockSize * 0.5f,
+        3.25f);
+
     [SerializeField] private Block blockPrefab;
     [SerializeField] private GameManager gameManager;
     [SerializeField] private Transform blocksParent;
     [SerializeField] private int rows = 8;
-    [SerializeField] private int columns = 24;
-    [SerializeField] private float blockSize = 0.375f;
+    [SerializeField] private int columns = 26;
+    [SerializeField] private float blockSize = DefaultBlockSize;
     [SerializeField] private float spacing = 0f;
-    [SerializeField] private Vector2 startPosition = new Vector2(-4.3125f, 3.25f);
-    [SerializeField, Min(0f)] private float visualOverlap = 0.004f;
-    [SerializeField, Min(0f)] private float colliderInset = 0.001f;
+    [SerializeField] private Vector2 startPosition = DefaultBlockStartPosition;
+    [SerializeField, Min(0f)] private float visualOverlap = DefaultVisualOverlap;
+    [SerializeField, Min(0f)] private float colliderInset = DefaultColliderInset;
     [SerializeField] private ItemController itemPrefab;
     [SerializeField, Range(0f, 1f)] private float itemDropChance = 0.5f;
     [SerializeField] private ItemEffectManager itemEffectManager;
@@ -21,14 +29,14 @@ public class BlockGridBuilder : MonoBehaviour
     [SerializeField]
     private string[] blockLayout =
     {
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111",
-        "111111111111111111111111"
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111",
+        "11111111111111111111111111"
     };
     [SerializeField]
     private Color[] rowColors =

@@ -11,6 +11,7 @@ using UnityEngine.UI;
 [InitializeOnLoad]
 public static class Milestone1SceneBuilder
 {
+    private const float DefaultBlockSize = 10f / 26f;
     private const string ScenesFolder = "Assets/Scenes";
     private const string PrefabsFolder = "Assets/prefabs";
     private const string BackgroundsFolder = "Assets/Sprites/Backgrounds";
@@ -277,10 +278,12 @@ public static class Milestone1SceneBuilder
         SetString(stageData, "stageName", "Stage 1");
         SetObjectReference(stageData, "backgroundSprite", backgroundSprite);
         SetInt(stageData, "blockRows", 8);
-        SetInt(stageData, "blockColumns", 24);
-        SetFloat(stageData, "blockSize", 0.375f);
+        SetInt(stageData, "blockColumns", 26);
+        SetFloat(stageData, "blockSize", DefaultBlockSize);
         SetFloat(stageData, "blockSpacing", 0f);
-        SetVector2(stageData, "blockStartPosition", new Vector2(-4.3125f, 3.25f));
+        SetVector2(stageData, "blockStartPosition", new Vector2(
+            -(26 - 1) * DefaultBlockSize * 0.5f,
+            3.25f));
         SetFloat(stageData, "ballSpeed", 7f);
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
@@ -337,9 +340,11 @@ public static class Milestone1SceneBuilder
         SetString(stageData, "stageName", "Stage 2");
         SetInt(stageData, "blockRows", 8);
         SetInt(stageData, "blockColumns", 15);
-        SetFloat(stageData, "blockSize", 0.375f);
+        SetFloat(stageData, "blockSize", DefaultBlockSize);
         SetFloat(stageData, "blockSpacing", 0f);
-        SetVector2(stageData, "blockStartPosition", new Vector2(-2.625f, 3.25f));
+        SetVector2(stageData, "blockStartPosition", new Vector2(
+            -(15 - 1) * DefaultBlockSize * 0.5f,
+            3.25f));
         SetFloat(stageData, "ballSpeed", 7.5f);
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
@@ -377,9 +382,11 @@ public static class Milestone1SceneBuilder
         SetString(stageData, "stageName", "Stage 3");
         SetInt(stageData, "blockRows", 10);
         SetInt(stageData, "blockColumns", 15);
-        SetFloat(stageData, "blockSize", 0.375f);
+        SetFloat(stageData, "blockSize", DefaultBlockSize);
         SetFloat(stageData, "blockSpacing", 0f);
-        SetVector2(stageData, "blockStartPosition", new Vector2(-2.625f, 3.25f));
+        SetVector2(stageData, "blockStartPosition", new Vector2(
+            -(15 - 1) * DefaultBlockSize * 0.5f,
+            3.25f));
         SetFloat(stageData, "ballSpeed", 8f);
         SetFloat(stageData, "paddleSpeed", 9f);
         SetInt(stageData, "initialLives", 3);
